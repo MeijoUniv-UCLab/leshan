@@ -253,6 +253,14 @@ Contributors:
         <artifactId>leshan-tl-jc-client-coaptcp</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <!-- https://mvnrepository.com/artifact/junit/junit -->
+      <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <version>4.13.2</version>
+          <scope>test</scope>
+      </dependency>
+
 
       <!-- demo -->
       <dependency>
@@ -375,6 +383,17 @@ Contributors:
         <groupId>org.jmdns</groupId>
         <artifactId>jmdns</artifactId>
         <version>3.5.8</version>
+      </dependency>
+      <dependency>
+        <groupId>com.kohlschutter.junixsocket</groupId>
+        <artifactId>junixsocket-common</artifactId>
+        <version>2.9.1</version>
+      </dependency>
+      <dependency>
+        <groupId>com.kohlschutter.junixsocket</groupId>
+        <artifactId>junixsocket-core</artifactId>
+        <version>2.9.1</version>
+        <type>pom</type>
       </dependency>
 
       <!-- test dependencies -->
