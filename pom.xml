@@ -103,7 +103,6 @@ Contributors:
     <module>leshan-demo-servers-shared</module>
     <module>leshan-demo-server</module>
     <module>leshan-demo-bsserver</module>
-    <module>uclab-module</module>
     <module>uclab-modules</module>
   </modules>
   <scm child.scm.developerConnection.inherit.append.path="false" child.scm.url.inherit.append.path="false">
