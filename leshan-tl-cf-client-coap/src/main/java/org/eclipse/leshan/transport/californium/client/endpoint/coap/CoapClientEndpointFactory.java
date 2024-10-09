@@ -17,7 +17,6 @@ package org.eclipse.leshan.transport.californium.client.endpoint.coap;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.cert.Certificate;
 import java.util.List;
 
@@ -30,7 +29,7 @@ import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.leshan.client.endpoint.ClientEndpointToolbox;
 import org.eclipse.leshan.client.servers.LwM2mServer;
 import org.eclipse.leshan.client.servers.ServerInfo;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.transport.californium.DefaultExceptionTranslator;
 import org.eclipse.leshan.transport.californium.ExceptionTranslator;
@@ -61,7 +60,7 @@ public class CoapClientEndpointFactory implements CaliforniumClientEndpointFacto
         return "CoAP over UDP endpoint based on Californium library";
     }
 
-    protected String getLoggingTag(URI uri) {
+    protected String getLoggingTag(EndpointUri uri) {
         if (loggingTagPrefix != null) {
             return String.format("[%s-%s]", loggingTagPrefix, uri);
         } else {
@@ -73,7 +72,8 @@ public class CoapClientEndpointFactory implements CaliforniumClientEndpointFacto
     public CoapEndpoint createCoapEndpoint(InetAddress clientAddress, Configuration defaultConfiguration,
             ServerInfo serverInfo, boolean clientInitiatedOnly, List<Certificate> trustStore,
             ClientEndpointToolbox toolbox) {
-        return createEndpointBuilder(new InetSocketAddress(clientAddress, 0), serverInfo, defaultConfiguration).build();
+        return createEndpointBuilder(new InetSocketAddress(clientAddress, 0), serverInfo, defaultConfiguration, toolbox)
+                .build();
     }
 
     /**
@@ -85,11 +85,11 @@ public class CoapClientEndpointFactory implements CaliforniumClientEndpointFacto
      * @return the {@link Builder} used for unsecured communication.
      */
     protected CoapEndpoint.Builder createEndpointBuilder(InetSocketAddress address, ServerInfo serverInfo,
-            Configuration coapConfig) {
+            Configuration coapConfig, ClientEndpointToolbox toolbox) {
         CoapEndpoint.Builder builder = new CoapEndpoint.Builder();
         builder.setConnector(createConnector(address, coapConfig));
         builder.setConfiguration(coapConfig);
-        builder.setLoggingTag(getLoggingTag(EndpointUriUtil.createUri(getProtocol().getUriScheme(), address)));
+        builder.setLoggingTag(getLoggingTag(toolbox.getUriHandler().createUri(getProtocol().getUriScheme(), address)));
         return builder;
     }
 

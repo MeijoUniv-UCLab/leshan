@@ -84,17 +84,18 @@ public class IpPeer implements LwM2mPeer {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o)
+    public final boolean equals(Object obj) {
+        if (this == obj)
             return true;
-        if (o == null || getClass() != o.getClass())
+        if (!(obj instanceof IpPeer))
             return false;
-        IpPeer ipPeer = (IpPeer) o;
-        return peerAddress.equals(ipPeer.peerAddress) && Objects.equals(identity, ipPeer.identity);
+        IpPeer other = (IpPeer) obj;
+        return Objects.equals(identity, other.identity) && Objects.equals(peerAddress, other.peerAddress)
+                && Objects.equals(virtualHost, other.virtualHost);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(peerAddress, identity);
+    public final int hashCode() {
+        return Objects.hash(identity, peerAddress, virtualHost);
     }
 }

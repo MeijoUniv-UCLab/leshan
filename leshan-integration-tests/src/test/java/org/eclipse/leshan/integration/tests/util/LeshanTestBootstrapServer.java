@@ -33,11 +33,13 @@ import org.eclipse.leshan.bsserver.EditableBootstrapConfigStore;
 import org.eclipse.leshan.bsserver.LeshanBootstrapServer;
 import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpointsProvider;
 import org.eclipse.leshan.bsserver.security.BootstrapSecurityStore;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.link.lwm2m.LwM2mLinkParser;
 import org.eclipse.leshan.core.node.codec.LwM2mDecoder;
 import org.eclipse.leshan.core.node.codec.LwM2mEncoder;
 import org.eclipse.leshan.core.request.DownlinkBootstrapRequest;
 import org.eclipse.leshan.core.response.LwM2mResponse;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.EditableSecurityStore;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
 import org.mockito.ArgumentCaptor;
@@ -49,14 +51,15 @@ public class LeshanTestBootstrapServer extends LeshanBootstrapServer {
     private BootstrapSessionListener bootstrapSession;
 
     public LeshanTestBootstrapServer(LwM2mBootstrapServerEndpointsProvider endpointsProvider,
-            BootstrapSessionManager bsSessionManager, BootstrapHandlerFactory bsHandlerFactory, LwM2mEncoder encoder,
-            LwM2mDecoder decoder, LwM2mLinkParser linkParser, BootstrapSecurityStore securityStore,
+            BootstrapSessionManager bsSessionManager, ServerEndpointNameProvider endpointNameProvider,
+            BootstrapHandlerFactory bsHandlerFactory, LwM2mEncoder encoder, LwM2mDecoder decoder,
+            LwM2mLinkParser linkParser, EndPointUriHandler uriHandler, BootstrapSecurityStore securityStore,
             ServerSecurityInfo serverSecurityInfo, //
             // arguments only needed for LeshanTestBootstrapServer
             EditableBootstrapConfigStore configStore, EditableSecurityStore editableSecurityStore) {
 
-        super(endpointsProvider, bsSessionManager, bsHandlerFactory, encoder, decoder, linkParser, securityStore,
-                serverSecurityInfo);
+        super(endpointsProvider, bsSessionManager, endpointNameProvider, bsHandlerFactory, encoder, decoder, linkParser,
+                uriHandler, securityStore, serverSecurityInfo);
         // keep store reference for getter.
         this.configStore = configStore;
         this.securityStore = editableSecurityStore;

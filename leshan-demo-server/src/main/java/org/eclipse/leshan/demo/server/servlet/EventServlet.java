@@ -250,7 +250,7 @@ public class EventServlet extends EventSourceServlet {
 
             if (registration != null) {
                 try {
-                    String jsonContent = EventServlet.this.mapper.writeValueAsString(data.getNodes());
+                    String jsonContent = EventServlet.this.mapper.writeValueAsString(data.getMostRecentNodes());
 
                     String eventData = new StringBuilder("{\"ep\":\"") //
                             .append(registration.getEndpoint()) //
@@ -310,7 +310,7 @@ public class EventServlet extends EventSourceServlet {
         this.mapper = mapper;
     }
 
-    private synchronized void sendEvent(String event, String data, String endpoint) {
+    public synchronized void sendEvent(String event, String data, String endpoint) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Dispatching {} event from endpoint {}", event, endpoint);
         }

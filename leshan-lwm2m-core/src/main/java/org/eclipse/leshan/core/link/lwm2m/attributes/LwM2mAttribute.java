@@ -16,6 +16,8 @@
  *******************************************************************************/
 package org.eclipse.leshan.core.link.lwm2m.attributes;
 
+import java.util.Objects;
+
 import org.eclipse.leshan.core.link.attributes.Attribute;
 import org.eclipse.leshan.core.util.Validate;
 
@@ -49,12 +51,13 @@ public class LwM2mAttribute<T> implements Attribute {
     public LwM2mAttribute(LwM2mAttributeModel<T> model, T value) {
         Validate.notNull(model);
         this.model = model;
-        this.value = value;
         if (value == null) {
             if (!model.canBeValueless()) {
                 throw new IllegalArgumentException(String.format("Attribute %s must have a value", model.getName()));
             }
+            this.value = null;
         } else {
+            this.value = model.initValue(value);
             String errorMessage = model.getInvalidValueCause(value);
             if (errorMessage != null) {
                 throw new IllegalArgumentException(errorMessage);
@@ -135,34 +138,26 @@ public class LwM2mAttribute<T> implements Attribute {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((model == null) ? 0 : model.hashCode());
-        result = prime * result + ((value == null) ? 0 : value.hashCode());
-        return result;
+    public final boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof LwM2mAttribute))
+            return false;
+        LwM2mAttribute<?> that = (LwM2mAttribute<?>) o;
+        return Objects.equals(model, that.model) && Objects.equals(value, that.value);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        LwM2mAttribute<?> other = (LwM2mAttribute<?>) obj;
-        if (model == null) {
-            if (other.model != null)
-                return false;
-        } else if (!model.equals(other.model))
-            return false;
-        if (value == null) {
-            if (other.value != null)
-                return false;
-        } else if (!value.equals(other.value))
-            return false;
-        return true;
+    public final int hashCode() {
+        return Objects.hash(model, value);
     }
 
+    @Override
+    public String toString() {
+        if (hasValue()) {
+            return getName() + "=" + value;
+        } else {
+            return getName();
+        }
+    }
 }

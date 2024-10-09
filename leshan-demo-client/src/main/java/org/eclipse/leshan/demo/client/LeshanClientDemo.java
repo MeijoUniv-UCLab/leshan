@@ -44,6 +44,7 @@ import org.eclipse.californium.scandium.config.DtlsConnectorConfig.Builder;
 import org.eclipse.leshan.client.LeshanClient;
 import org.eclipse.leshan.client.LeshanClientBuilder;
 import org.eclipse.leshan.client.endpoint.LwM2mClientEndpointsProvider;
+import org.eclipse.leshan.client.engine.DefaultClientEndpointNameProvider;
 import org.eclipse.leshan.client.engine.DefaultRegistrationEngineFactory;
 import org.eclipse.leshan.client.object.LwM2mTestObject;
 import org.eclipse.leshan.client.object.Oscore;
@@ -323,7 +324,8 @@ public class LeshanClientDemo {
         endpointsProvider.add(new JavaCoapsTcpClientEndpointsProvider());
 
         // Create client
-        LeshanClientBuilder builder = new LeshanClientBuilder(cli.main.endpoint);
+        LeshanClientBuilder builder = new LeshanClientBuilder(
+                new DefaultClientEndpointNameProvider(cli.main.endpoint, cli.main.endpointNameMode));
         builder.setObjects(enablers);
         builder.setEndpointsProviders(
                 endpointsProvider.toArray(new LwM2mClientEndpointsProvider[endpointsProvider.size()]));
@@ -346,7 +348,7 @@ public class LeshanClientDemo {
                 BootstrapWriteResponse response = null;
                 try {
                     // get resource from string resource value
-                    LwM2mSingleResource resource = textDecoder.decode(resourceValue.getBytes(), resourcePath,
+                    LwM2mSingleResource resource = textDecoder.decode(resourceValue.getBytes(), null, resourcePath,
                             repository.getLwM2mModel(), LwM2mSingleResource.class);
                     // try to write this resource
                     response = client.getObjectTree().getObjectEnabler(resourcePath.getObjectId()).write(

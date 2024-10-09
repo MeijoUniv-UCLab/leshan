@@ -363,6 +363,14 @@ public class LwM2mPath implements Comparable<LwM2mPath> {
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder();
+        appendTo(b);
+        return b.toString();
+    }
+
+    /**
+     * Append LwM2m Path to given {@link StringBuilder}
+     */
+    public void appendTo(StringBuilder b) {
         b.append("/");
         if (getObjectId() != null) {
             b.append(getObjectId());
@@ -376,26 +384,6 @@ public class LwM2mPath implements Comparable<LwM2mPath> {
                 }
             }
         }
-        return b.toString();
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(objectId, objectInstanceId, resourceId, resourceInstanceId);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        LwM2mPath other = (LwM2mPath) obj;
-        return Objects.equals(objectId, other.objectId) && Objects.equals(objectInstanceId, other.objectInstanceId)
-                && Objects.equals(resourceId, other.resourceId)
-                && Objects.equals(resourceInstanceId, other.resourceInstanceId);
     }
 
     @Override
@@ -436,9 +424,7 @@ public class LwM2mPath implements Comparable<LwM2mPath> {
      * @param lwm2mRootpath the expected rootpath. <code>null</code> is considered as "/"
      * @return A valid {@link LwM2mPath} or null it does not start by lwm2mRootPath
      *
-     * @exception NumberFormatException if path contains not Numeric value
      * @exception InvalidLwM2mPathException if path is invalid (e.g. too big number in path)
-     * @exception IllegalArgumentException if path length is invalid
      */
     public static LwM2mPath parse(String fullpath, String lwm2mRootpath)
             throws NumberFormatException, InvalidLwM2mPathException, IllegalArgumentException {
@@ -460,7 +446,6 @@ public class LwM2mPath implements Comparable<LwM2mPath> {
      * @return list of paths as {@link LwM2mPath}.
      *
      * @exception LwM2mNodeException if path is invalid (e.g. too big number in path)
-     * @exception IllegalArgumentException if path length is invalid or if path contains not Numeric value
      */
     public static List<LwM2mPath> getLwM2mPathList(List<String> paths) {
         List<LwM2mPath> res = new ArrayList<>(paths.size());
@@ -488,5 +473,27 @@ public class LwM2mPath implements Comparable<LwM2mPath> {
                 }
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof LwM2mPath))
+            return false;
+        LwM2mPath that = (LwM2mPath) o;
+        return that.canEqual(this) && Objects.equals(objectId, that.objectId)
+                && Objects.equals(objectInstanceId, that.objectInstanceId)
+                && Objects.equals(resourceId, that.resourceId)
+                && Objects.equals(resourceInstanceId, that.resourceInstanceId);
+    }
+
+    public boolean canEqual(Object o) {
+        return (o instanceof LwM2mPath);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(objectId, objectInstanceId, resourceId, resourceInstanceId);
     }
 }

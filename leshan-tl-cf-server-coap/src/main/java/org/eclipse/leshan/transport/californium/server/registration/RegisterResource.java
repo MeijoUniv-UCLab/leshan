@@ -28,6 +28,7 @@ import org.eclipse.californium.core.coap.CoAP.Type;
 import org.eclipse.californium.core.coap.Request;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 import org.eclipse.californium.core.server.resources.Resource;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.link.Link;
 import org.eclipse.leshan.core.link.LinkParseException;
 import org.eclipse.leshan.core.link.LinkParser;
@@ -56,15 +57,15 @@ import org.slf4j.LoggerFactory;
  */
 public class RegisterResource extends LwM2mCoapResource {
 
-    private static final String QUERY_PARAM_ENDPOINT = "ep=";
+    private static final String QUERY_PARAM_ENDPOINT = "ep";
 
-    private static final String QUERY_PARAM_BINDING_MODE = "b=";
+    private static final String QUERY_PARAM_BINDING_MODE = "b";
 
-    private static final String QUERY_PARAM_LWM2M_VERSION = "lwm2m=";
+    private static final String QUERY_PARAM_LWM2M_VERSION = "lwm2m";
 
-    private static final String QUERY_PARAM_SMS = "sms=";
+    private static final String QUERY_PARAM_SMS = "sms";
 
-    private static final String QUERY_PARAM_LIFETIME = "lt=";
+    private static final String QUERY_PARAM_LIFETIME = "lt";
 
     private static final String QUERY_PARAM_QUEUEMMODE = "Q"; // since LWM2M 1.1
 
@@ -74,13 +75,15 @@ public class RegisterResource extends LwM2mCoapResource {
 
     private final UplinkDeviceManagementRequestReceiver receiver;
     private final LinkParser linkParser;
+    private final EndPointUriHandler uriHandler;
 
     public RegisterResource(UplinkDeviceManagementRequestReceiver receiver, LinkParser linkParser,
-            IdentityHandlerProvider identityHandlerProvider) {
+            IdentityHandlerProvider identityHandlerProvider, EndPointUriHandler uriHandler) {
         super(RESOURCE_NAME, identityHandlerProvider);
 
         this.receiver = receiver;
         this.linkParser = linkParser;
+        this.uriHandler = uriHandler;
         getAttributes().addResourceType("core.rd");
     }
 
@@ -153,27 +156,55 @@ public class RegisterResource extends LwM2mCoapResource {
         Map<String, String> additionalParams = new HashMap<>();
 
         // Get parameters
+        // TODO maybe we should use LwM2mAttributeParser ?
         for (String param : request.getOptions().getUriQuery()) {
-            if (param.startsWith(QUERY_PARAM_ENDPOINT)) {
-                endpoint = param.substring(3);
-            } else if (param.startsWith(QUERY_PARAM_LIFETIME)) {
-                lifetime = Long.valueOf(param.substring(3));
-            } else if (param.startsWith(QUERY_PARAM_SMS)) {
+            String[] p = param.split("=", 2);
+            String paramName = p[0];
+            if (paramName.equals(QUERY_PARAM_ENDPOINT)) {
+                if (p.length == 2) {
+                    endpoint = p[1];
+                } else {
+                    endpoint = "";
+                }
+            } else if (paramName.equals(QUERY_PARAM_LIFETIME)) {
+                if (p.length == 2) {
+                    lifetime = Long.valueOf(p[1]);
+                } else {
+                    handleInvalidRequest(exchange.advanced(), "lifetime (lt) param can not be empty", null);
+                }
+            } else if (paramName.equals(QUERY_PARAM_SMS)) {
+                if (p.length == 2) {
+                    smsNumber = p[1];
+                } else {
+                    smsNumber = "";
+                }
                 smsNumber = param.substring(4);
-            } else if (param.startsWith(QUERY_PARAM_LWM2M_VERSION)) {
-                lwVersion = param.substring(6);
-            } else if (param.startsWith(QUERY_PARAM_BINDING_MODE)) {
-                binding = BindingMode.parse(param.substring(2));
-            } else if (param.equals(QUERY_PARAM_QUEUEMMODE)) {
-                queueMode = true;
+            } else if (paramName.equals(QUERY_PARAM_LWM2M_VERSION)) {
+                if (p.length == 2) {
+                    lwVersion = p[1];
+                } else {
+                    lwVersion = "";
+                }
+            } else if (paramName.equals(QUERY_PARAM_BINDING_MODE)) {
+                if (p.length == 2) {
+                    binding = BindingMode.parse(p[1]);
+                } else {
+                    binding = EnumSet.noneOf(BindingMode.class);
+                }
+            } else if (paramName.equals(QUERY_PARAM_QUEUEMMODE)) {
+                if (p.length == 2) {
+                    handleInvalidRequest(exchange.advanced(), "queue param (Q) most not have value", null);
+                } else {
+                    queueMode = true;
+                }
+
             } else {
-                String[] tokens = param.split("\\=");
+                String[] tokens = param.split("=", 2);
                 if (tokens != null && tokens.length == 2) {
                     additionalParams.put(tokens[0], tokens[1]);
                 }
             }
         }
-
         // Create request
         Request coapRequest = exchange.advanced().getRequest();
         RegisterRequest registerRequest = new RegisterRequest(endpoint, lifetime, lwVersion, binding, queueMode,
@@ -182,7 +213,7 @@ public class RegisterResource extends LwM2mCoapResource {
         // Handle request
         // -------------------------------
         final SendableResponse<RegisterResponse> sendableResponse = receiver.requestReceived(sender, null,
-                registerRequest, exchange.advanced().getEndpoint().getUri());
+                registerRequest, uriHandler.createUri(exchange.advanced().getEndpoint().getUri()));
         RegisterResponse response = sendableResponse.getResponse();
 
         // Create CoAP Response from LwM2m request
@@ -208,12 +239,27 @@ public class RegisterResource extends LwM2mCoapResource {
         Map<String, String> additionalParams = new HashMap<>();
 
         for (String param : request.getOptions().getUriQuery()) {
-            if (param.startsWith(QUERY_PARAM_LIFETIME)) {
-                lifetime = Long.valueOf(param.substring(3));
-            } else if (param.startsWith(QUERY_PARAM_SMS)) {
+            String[] p = param.split("=", 2);
+            String paramName = p[0];
+            if (paramName.equals(QUERY_PARAM_LIFETIME)) {
+                if (p.length == 2) {
+                    lifetime = Long.valueOf(p[1]);
+                } else {
+                    handleInvalidRequest(exchange.advanced(), "lifetime (lt) param can not be empty", null);
+                }
+            } else if (paramName.equals(QUERY_PARAM_SMS)) {
+                if (p.length == 2) {
+                    smsNumber = p[1];
+                } else {
+                    smsNumber = "";
+                }
                 smsNumber = param.substring(4);
-            } else if (param.startsWith(QUERY_PARAM_BINDING_MODE)) {
-                binding = BindingMode.parse(param.substring(2));
+            } else if (paramName.equals(QUERY_PARAM_BINDING_MODE)) {
+                if (p.length == 2) {
+                    binding = BindingMode.parse(p[1]);
+                } else {
+                    binding = EnumSet.noneOf(BindingMode.class);
+                }
             } else {
                 String[] tokens = param.split("\\=");
                 if (tokens != null && tokens.length == 2) {
@@ -235,7 +281,7 @@ public class RegisterResource extends LwM2mCoapResource {
 
         // Handle request
         final SendableResponse<UpdateResponse> sendableResponse = receiver.requestReceived(sender, null, updateRequest,
-                exchange.advanced().getEndpoint().getUri());
+                uriHandler.createUri(exchange.advanced().getEndpoint().getUri()));
         UpdateResponse updateResponse = sendableResponse.getResponse();
 
         // Create CoAP Response from LwM2m request
@@ -257,7 +303,7 @@ public class RegisterResource extends LwM2mCoapResource {
 
         // Handle request
         final SendableResponse<DeregisterResponse> sendableResponse = receiver.requestReceived(sender, null,
-                deregisterRequest, exchange.advanced().getEndpoint().getUri());
+                deregisterRequest, uriHandler.createUri(exchange.advanced().getEndpoint().getUri()));
         DeregisterResponse deregisterResponse = sendableResponse.getResponse();
 
         // Create CoAP Response from LwM2m request

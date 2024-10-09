@@ -32,6 +32,8 @@ import org.eclipse.leshan.core.node.InvalidLwM2mPathException;
 import org.eclipse.leshan.core.node.LwM2mPath;
 import org.junit.jupiter.api.Test;
 
+import nl.jqno.equalsverifier.EqualsVerifier;
+
 public class AttributeSetTest {
     private static LwM2mAttributeParser parser = new DefaultLwM2mAttributeParser();
 
@@ -44,7 +46,7 @@ public class AttributeSetTest {
                 LwM2mAttributes.create(LwM2mAttributes.EVALUATE_MINIMUM_PERIOD, 30L),
                 LwM2mAttributes.create(LwM2mAttributes.EVALUATE_MAXIMUM_PERIOD, 45L),
                 LwM2mAttributes.create(LwM2mAttributes.LESSER_THAN, 10D),
-                LwM2mAttributes.create(LwM2mAttributes.GREATER_THAN, 20.10D));
+                LwM2mAttributes.create(LwM2mAttributes.GREATER_THAN, "20.1"));
         assertEquals("ver=1.1&pmin=5&pmax=60&epmin=30&epmax=45&lt=10&gt=20.1", sut.toString());
 
         LwM2mAttributeSet res = new LwM2mAttributeSet(parser.parseUriQuery(sut.toString()));
@@ -55,7 +57,7 @@ public class AttributeSetTest {
     public void test_query_params_does_not_use_scientific_notation() throws InvalidAttributeException {
         LwM2mAttributeSet sut = new LwM2mAttributeSet( //
                 LwM2mAttributes.create(LwM2mAttributes.LESSER_THAN, 10000000000000000000d),
-                LwM2mAttributes.create(LwM2mAttributes.GREATER_THAN, 0.0000000000009223372d),
+                LwM2mAttributes.create(LwM2mAttributes.GREATER_THAN, "0.0000000000009223372"),
                 LwM2mAttributes.create(LwM2mAttributes.STEP, 10000000000000000000d));
         assertEquals("lt=10000000000000000000&gt=0.0000000000009223372&st=10000000000000000000", sut.toString());
 
@@ -155,5 +157,22 @@ public class AttributeSetTest {
             // OBJECT_VERSION cannot be assigned on resource level
             sut.validate(new LwM2mPath("/3/0/9"));
         });
+    }
+
+    private class ExtendedAttributeSet extends AttributeSet {
+        public ExtendedAttributeSet(Attribute... attributes) {
+            super(attributes);
+        }
+
+        @Override
+        public boolean canEqual(Object obj) {
+            return (obj instanceof AttributeSetTest.ExtendedAttributeSet);
+        }
+    }
+
+    @Test
+    public void assertEqualsHashcode() {
+        EqualsVerifier.forClass(AttributeSet.class).withRedefinedSubclass(AttributeSetTest.ExtendedAttributeSet.class)
+                .verify();
     }
 }

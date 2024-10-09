@@ -16,6 +16,7 @@
  *******************************************************************************/
 package org.eclipse.leshan.server.registration;
 
+import static org.eclipse.leshan.core.util.TestToolBox.uriHandler;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
@@ -28,7 +29,6 @@ import java.util.Set;
 
 import org.eclipse.leshan.core.LwM2m.LwM2mVersion;
 import org.eclipse.leshan.core.LwM2m.Version;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
 import org.eclipse.leshan.core.link.Link;
 import org.eclipse.leshan.core.link.LinkParseException;
 import org.eclipse.leshan.core.link.LinkParser;
@@ -39,6 +39,8 @@ import org.eclipse.leshan.core.request.ContentFormat;
 import org.eclipse.leshan.server.registration.Registration.Builder;
 import org.eclipse.leshan.server.registration.RegistrationDataExtractor.RegistrationData;
 import org.junit.jupiter.api.Test;
+
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 public class RegistrationTest {
 
@@ -279,7 +281,7 @@ public class RegistrationTest {
             throws LinkParseException {
         Builder builder = new Registration.Builder("id", "endpoint",
                 new IpPeer(InetSocketAddress.createUnresolved("localhost", 0)),
-                EndpointUriUtil.createUri("coap://localhost:5683"));
+                uriHandler.createUri("coap://localhost:5683"));
 
         Link[] links = linkParser.parseCoreLinkFormat(objectLinks.getBytes());
         builder.objectLinks(links);
@@ -292,5 +294,10 @@ public class RegistrationTest {
         builder.availableInstances(dataFromObjectLinks.getAvailableInstances());
 
         return builder.build();
+    }
+
+    @Test
+    public void assertEqualsHashcode() {
+        EqualsVerifier.forClass(Registration.class).verify();
     }
 }

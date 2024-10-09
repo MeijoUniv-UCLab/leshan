@@ -17,7 +17,6 @@ package org.eclipse.leshan.integration.tests.util;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -29,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.scandium.config.DtlsConfig;
 import org.eclipse.californium.scandium.config.DtlsConfig.DtlsRole;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.lwm2m.LwM2mLinkParser;
 import org.eclipse.leshan.core.node.codec.DefaultLwM2mDecoder;
@@ -48,6 +49,7 @@ import org.eclipse.leshan.server.registration.RegistrationDataExtractor;
 import org.eclipse.leshan.server.registration.RegistrationIdProvider;
 import org.eclipse.leshan.server.registration.RegistrationStore;
 import org.eclipse.leshan.server.security.Authorizer;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.EditableSecurityStore;
 import org.eclipse.leshan.servers.security.SecurityStore;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
@@ -92,7 +94,8 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
             LwM2mModelProvider modelProvider, LwM2mEncoder encoder, LwM2mDecoder decoder, boolean noQueueMode,
             ClientAwakeTimeProvider awakeTimeProvider, RegistrationIdProvider registrationIdProvider,
             RegistrationDataExtractor registrationDataExtractor, LwM2mLinkParser linkParser,
-            ServerSecurityInfo serverSecurityInfo, boolean updateRegistrationOnNotification,
+            EndPointUriHandler uriHandler, ServerSecurityInfo serverSecurityInfo,
+            ServerEndpointNameProvider endpointNameProvider, boolean updateRegistrationOnNotification,
             boolean updateRegistrationOnSend) {
 
         // create endpoint provider.
@@ -120,7 +123,8 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
         }
         return new LeshanTestServer(endpointsProvider, registrationStore, securityStore, authorizer, modelProvider,
                 encoder, decoder, noQueueMode, awakeTimeProvider, registrationIdProvider, registrationDataExtractor,
-                linkParser, serverSecurityInfo, updateRegistrationOnNotification, updateRegistrationOnSend);
+                linkParser, uriHandler, serverSecurityInfo, endpointNameProvider, updateRegistrationOnNotification,
+                updateRegistrationOnSend);
     }
 
     public static LeshanTestServerBuilder givenServerUsing(Protocol protocolToUse) {
@@ -237,7 +241,8 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
         if (protocolToUse.equals(Protocol.COAP)) {
             return new CoapServerProtocolProvider() {
                 @Override
-                public CaliforniumServerEndpointFactory createDefaultEndpointFactory(URI uri) {
+                public CaliforniumServerEndpointFactory createDefaultEndpointFactory(EndpointUri uri,
+                        EndPointUriHandler uriHandler) {
                     return new CoapOscoreServerEndpointFactory(uri);
                 }
             };

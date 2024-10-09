@@ -15,9 +15,8 @@
  *******************************************************************************/
 package org.eclipse.leshan.transport.javacoap.server.endpoint;
 
-import java.net.URI;
-
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 
 import com.mbed.coap.server.CoapServer;
@@ -26,16 +25,18 @@ public class EndpointUriProvider {
 
     private CoapServer coapServer;
     private final Protocol protocol;
+    private final EndPointUriHandler uriHandler;
 
-    public EndpointUriProvider(Protocol protocol) {
+    public EndpointUriProvider(EndPointUriHandler uriHandler, Protocol protocol) {
         this.protocol = protocol;
+        this.uriHandler = uriHandler;
     }
 
     public void setCoapServer(CoapServer coapServer) {
         this.coapServer = coapServer;
     }
 
-    public URI getEndpointUri() {
-        return EndpointUriUtil.createUri(protocol.getUriScheme(), coapServer.getLocalSocketAddress());
+    public EndpointUri getEndpointUri() {
+        return uriHandler.createUri(protocol.getUriScheme(), coapServer.getLocalSocketAddress());
     }
 }

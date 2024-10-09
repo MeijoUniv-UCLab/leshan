@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2020 Sierra Wireless and others.
+ * Copyright (c) 2013-2015 Sierra Wireless and others.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -11,7 +11,7 @@
  *    http://www.eclipse.org/org/documents/edl-v10.html.
  *
  * Contributors:
- *     Sierra Wireless - initial API and implementation
+ *     Natalia Krzykała Orange Polska S.A. - initial implementation
  *******************************************************************************/
 package org.eclipse.leshan.core;
 
@@ -32,7 +32,30 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
-public class VersionTest {
+class LwM2mTest {
+
+    private class ExtendedLwM2mVersion extends LwM2m.LwM2mVersion {
+        ExtendedLwM2mVersion(String version, boolean supported) {
+            super(version, supported);
+        }
+
+        @Override
+        public boolean canEqual(Object obj) {
+            return (obj instanceof ExtendedLwM2mVersion);
+        }
+    }
+
+    @Test
+    public void assertEqualsHashcodeLwM2mVersion() {
+        EqualsVerifier.forClass(LwM2m.LwM2mVersion.class).withRedefinedSuperclass()
+                .withRedefinedSubclass(ExtendedLwM2mVersion.class).verify();
+    }
+
+    @Test
+    public void assertEqualsHashcodeVersion() {
+        EqualsVerifier.forClass(LwM2m.Version.class).withRedefinedSubclass(LwM2m.LwM2mVersion.class).verify();
+    }
+
     @Test
     public void is_supported_tests() {
         assertTrue(LwM2mVersion.isSupported("1.0"));
@@ -52,14 +75,6 @@ public class VersionTest {
         assertTrue(new Version("1.3").compareTo(new Version("1.2")) > 0);
         assertTrue(new Version("2.0").compareTo(new Version("1.2")) > 0);
         assertTrue(new Version("128.2").compareTo(new Version("128.0")) > 0);
-    }
-
-    @Test
-    public void assertEqualsHashcode() {
-        // TODO we should not use EqualsVerifier.simple()
-        // but implement a right hashcode/equals way
-        // see : https://github.com/eclipse-leshan/leshan/issues/1504
-        EqualsVerifier.simple().forClass(Version.class).verify();
     }
 
     @Test

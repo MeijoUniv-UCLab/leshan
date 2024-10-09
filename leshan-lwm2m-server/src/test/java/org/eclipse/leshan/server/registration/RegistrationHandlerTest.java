@@ -18,13 +18,12 @@ package org.eclipse.leshan.server.registration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.link.DefaultLinkParser;
 import org.eclipse.leshan.core.link.LinkParseException;
 import org.eclipse.leshan.core.peer.IpPeer;
@@ -34,6 +33,7 @@ import org.eclipse.leshan.core.request.RegisterRequest;
 import org.eclipse.leshan.core.request.UpdateRequest;
 import org.eclipse.leshan.core.request.UplinkRequest;
 import org.eclipse.leshan.server.security.Authorizer;
+import org.eclipse.leshan.servers.DefaultServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.Authorization;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,8 @@ public class RegistrationHandlerTest {
         authorizer = new TestAuthorizer();
         registrationStore = new InMemoryRegistrationStore();
         registrationHandler = new RegistrationHandler(new RegistrationServiceImpl(registrationStore), authorizer,
-                new RandomStringRegistrationIdProvider(), new DefaultRegistrationDataExtractor());
+                new RandomStringRegistrationIdProvider(), new DefaultRegistrationDataExtractor(),
+                new DefaultServerEndpointNameProvider());
     }
 
     @Test
@@ -115,8 +116,8 @@ public class RegistrationHandlerTest {
         return new IpPeer(new InetSocketAddress(0));
     }
 
-    private URI givenServerEndpointUri() {
-        return EndpointUriUtil.createUri("coap", "localhost", 5683);
+    private EndpointUri givenServerEndpointUri() {
+        return new EndpointUri("coap", "localhost", 5683);
     }
 
     private RegisterRequest givenRegisterRequestWithEndpoint(String endpoint) {

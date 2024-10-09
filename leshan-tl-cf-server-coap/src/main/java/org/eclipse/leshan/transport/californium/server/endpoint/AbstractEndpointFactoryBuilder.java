@@ -16,22 +16,29 @@
 package org.eclipse.leshan.transport.californium.server.endpoint;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.List;
 import java.util.function.Consumer;
 
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.elements.config.Configuration.ModuleDefinitionsProvider;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
+import org.eclipse.leshan.core.util.Validate;
 
 public abstract class AbstractEndpointFactoryBuilder<SELF extends AbstractEndpointFactoryBuilder<SELF, TTarget>, TTarget> {
 
-    protected URI uri;
+    protected EndpointUri uri;
     protected String loggingTagPrefix;
     protected Configuration configuration;
     protected Consumer<CoapEndpoint.Builder> coapEndpointConfigInitializer;
+    protected EndPointUriHandler uriHandler;
+
+    public AbstractEndpointFactoryBuilder(EndPointUriHandler uriHandler) {
+        Validate.notNull(uriHandler);
+        this.uriHandler = uriHandler;
+    }
 
     @SuppressWarnings("unchecked")
     private SELF self() {
@@ -44,10 +51,14 @@ public abstract class AbstractEndpointFactoryBuilder<SELF extends AbstractEndpoi
 
     protected abstract List<ModuleDefinitionsProvider> getModuleDefinitionsProviders();
 
+    protected EndPointUriHandler getUriHandler() {
+        return uriHandler;
+    }
+
     public abstract TTarget build();
 
-    public SELF setURI(URI uri) {
-        EndpointUriUtil.validateURI(uri);
+    public SELF setURI(EndpointUri uri) {
+        uriHandler.validateURI(uri);
         this.uri = uri;
         return self();
     }
@@ -57,13 +68,13 @@ public abstract class AbstractEndpointFactoryBuilder<SELF extends AbstractEndpoi
     }
 
     public SELF setURI(InetSocketAddress addr) {
-        this.uri = EndpointUriUtil.createUri(getSupportedProtocol().getUriScheme(), addr);
+        this.uri = uriHandler.createUri(getSupportedProtocol().getUriScheme(), addr);
         return self();
     }
 
     public SELF setURI(String uriAsString) {
-        URI uri = EndpointUriUtil.createUri(uriAsString);
-        EndpointUriUtil.validateURI(uri);
+        EndpointUri uri = uriHandler.createUri(uriAsString);
+        uriHandler.validateURI(uri);
 
         if (!getSupportedProtocol().getUriScheme().equals(uri.getScheme())) {
             throw new IllegalArgumentException(String.format("Invalid URI[%s]: Protocol Scheme MUST NOT be [%s]", uri,
