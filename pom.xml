@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
+<?xml version="1.0" encoding="UTF-8"?><!--
 
 Copyright (c) 2013-2015 Sierra Wireless and others.
 
@@ -15,15 +14,12 @@ and the Eclipse Distribution License is available at
 Contributors:
     Sierra Wireless - initial API and implementation
 
--->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" child.project.url.inherit.append.path="false" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+--><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" child.project.url.inherit.append.path="false" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>org.eclipse.leshan</groupId>
   <artifactId>leshan</artifactId>
   <version>2.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
-
   <name>leshan</name>
   <description>An OMA Lightweight M2M (LWM2M) implementation in Java</description>
   <url>http://eclipse.org/leshan</url>
@@ -34,7 +30,6 @@ Contributors:
       <comments>Leshan is dual-licensed under the Eclipse Public License v2.0 and Eclipse Distribution License v1.0. A consumer can choose between that 2 licenses.</comments>
     </license>
   </licenses>
-
   <developers>
     <developer>
       <id>sbernard</id>
@@ -76,7 +71,6 @@ Contributors:
       </roles>
     </developer>
   </developers>
-
   <modules>
     <!-- library-->
     <module>leshan-lwm2m-core</module>
@@ -85,7 +79,6 @@ Contributors:
     <module>leshan-lwm2m-bsserver</module>
     <module>leshan-lwm2m-server</module>
     <module>leshan-lwm2m-server-redis</module>
-
     <!-- transport layer based on californium -->
     <module>leshan-tl-cf-shared</module>
     <module>leshan-tl-cf-bsserver-coap</module>
@@ -96,41 +89,36 @@ Contributors:
     <module>leshan-tl-cf-bsserver-coap-oscore</module>
     <module>leshan-tl-cf-client-coap-oscore</module>
     <module>leshan-tl-cf-server-coap-oscore</module>
-
     <!-- transport layer based on java-coap -->
     <module>leshan-tl-jc-shared</module>
     <module>leshan-tl-jc-server-coap</module>
     <module>leshan-tl-jc-client-coap</module>
     <module>leshan-tl-jc-server-coaptcp</module>
     <module>leshan-tl-jc-client-coaptcp</module>
-
     <!--  integration tests -->
     <module>leshan-integration-tests</module>
-
     <!-- demos -->
     <module>leshan-demo-shared</module>
     <module>leshan-demo-client</module>
     <module>leshan-demo-servers-shared</module>
     <module>leshan-demo-server</module>
     <module>leshan-demo-bsserver</module>
+    <module>uclab-module</module>
+    <module>uclab-modules</module>
   </modules>
-
   <scm child.scm.developerConnection.inherit.append.path="false" child.scm.url.inherit.append.path="false">
     <developerConnection>scm:git:ssh://git@github.com/eclipse/leshan.git</developerConnection>
     <tag>HEAD</tag>
     <url>https://github.com/eclipse/leshan.git</url>
   </scm>
-
   <properties>
     <!-- configure encoding -->
     <leshan.encoding>UTF-8</leshan.encoding>
     <project.build.sourceEncoding>${leshan.encoding}</project.build.sourceEncoding>
     <project.reporting.outputEncoding>${leshan.encoding}</project.reporting.outputEncoding>
-
     <!-- configure line separator -->
     <leshan.lineEnding>LF</leshan.lineEnding>
     <leshan.lineseparator>\n</leshan.lineseparator>
-
     <!-- we use properties for version when there are used more than once -->
     <!-- dependencies version -->
     <californium.version>3.12.1</californium.version>
@@ -149,7 +137,6 @@ Contributors:
     -->
     <mockito.version>4.11.0</mockito.version>
   </properties>
-
   <dependencyManagement>
     <dependencies>
       <!-- Leshan Libraries -->
@@ -183,7 +170,6 @@ Contributors:
         <artifactId>leshan-lwm2m-server-redis</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <!-- transport layer based on Californium -->
       <dependency>
         <groupId>${project.groupId}</groupId>
@@ -226,7 +212,6 @@ Contributors:
         <artifactId>leshan-tl-cf-client-coap-oscore</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <!-- transport layer based on java-coap -->
       <dependency>
         <groupId>${project.groupId}</groupId>
@@ -255,13 +240,11 @@ Contributors:
       </dependency>
       <!-- https://mvnrepository.com/artifact/junit/junit -->
       <dependency>
-          <groupId>junit</groupId>
-          <artifactId>junit</artifactId>
-          <version>4.13.2</version>
-          <scope>test</scope>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.13.2</version>
+        <scope>test</scope>
       </dependency>
-
-
       <!-- demo -->
       <dependency>
         <groupId>${project.groupId}</groupId>
@@ -273,7 +256,6 @@ Contributors:
         <artifactId>leshan-demo-servers-shared</artifactId>
         <version>${project.version}</version>
       </dependency>
-
       <!-- Leshan library dependencies -->
       <!-- core -->
       <dependency>
@@ -334,7 +316,6 @@ Contributors:
         <artifactId>netty-transport</artifactId>
         <version>${netty.version}</version>
       </dependency>
-
       <!-- Demos, examples and tests dependencies -->
       <dependency>
         <groupId>ch.qos.logback</groupId>
@@ -395,7 +376,6 @@ Contributors:
         <version>2.9.1</version>
         <type>pom</type>
       </dependency>
-
       <!-- test dependencies -->
       <dependency>
         <groupId>org.junit.jupiter</groupId>
@@ -434,7 +414,6 @@ Contributors:
       </dependency>
     </dependencies>
   </dependencyManagement>
-
   <!-- Bill Of Materials -->
   <!--
         Just contains list of maven plugin used. 
@@ -556,7 +535,7 @@ Contributors:
               <configuration>
                 <skip>true</skip>
                 <outputDirectory>nothing</outputDirectory>
-                <resources></resources>
+                <resources/>
               </configuration>
             </execution>
           </executions>
@@ -637,7 +616,6 @@ Contributors:
         </plugin>
       </plugins>
     </pluginManagement>
-
     <plugins>
       <plugin>
         <!--  One of the rare plugin which must be called on all module even Aggregator
@@ -667,8 +645,8 @@ Contributors:
         <artifactId>maven-enforcer-plugin</artifactId>
         <configuration>
           <rules>
-            <requireUpperBoundDeps></requireUpperBoundDeps>
-            <dependencyConvergence></dependencyConvergence>
+            <requireUpperBoundDeps/>
+            <dependencyConvergence/>
             <requireJavaVersion>
               <version>1.11</version>
             </requireJavaVersion>
@@ -695,7 +673,6 @@ Contributors:
       </extension>
     </extensions>
   </build>
-
   <profiles>
     <profile>
       <!-- Profile needed when shared config pom must be handled too 
