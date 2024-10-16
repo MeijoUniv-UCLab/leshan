@@ -1,6 +1,22 @@
-<?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+Copyright (c) 2024 Kengo Shimizu and UCLab.
+
+All rights reserved. This program and the accompanying materials
+are made available under the terms of the Eclipse Public License v2.0
+and Eclipse Distribution License v1.0 which accompany this distribution.
+
+The Eclipse Public License is available at
+   http://www.eclipse.org/legal/epl-v20.html
+and the Eclipse Distribution License is available at
+   http://www.eclipse.org/org/documents/edl-v10.html.
+
+Contributors:
+    Kengo Shimizu - implementation
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.eclipse.leshan</groupId>
@@ -10,7 +26,7 @@
   <groupId>jp.ac.meijo.ucl</groupId>
   <artifactId>uclab-modules</artifactId>
   <name>uclab-modules</name>
-  <url>http://maven.apache.org</url>
+  <url>https://www.ucl.meijo-u.ac.jp</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -20,10 +36,83 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.eclipse.leshan</groupId>
+      <artifactId>leshan-server-demo</artifactId>
+      <version>2.0.0-SNAPSHOT</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-	<dependency>
-	    <groupId>org.slf4j</groupId>
-	    <artifactId>slf4j-api</artifactId>
-	</dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-toml -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-toml</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.influxdb/influxdb-client-java -->
+    <dependency>
+      <groupId>com.influxdb</groupId>
+      <artifactId>influxdb-client-java</artifactId>
+      <version>6.12.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.leshan</groupId>
+      <artifactId>leshan-lwm2m-core</artifactId>
+      <version>2.0.0-SNAPSHOT</version>
+    </dependency>
+    <!-- californium -->
+    <dependency>
+      <groupId>org.eclipse.californium</groupId>
+      <artifactId>californium-core</artifactId>
+      <version>${californium.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.californium</groupId>
+      <artifactId>element-connector</artifactId>
+      <version>${californium.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.californium</groupId>
+      <artifactId>scandium</artifactId>
+      <version>${californium.version}</version>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>jp.ac.meijo.ucl.shimizu.FONMSystemInfluxDB</mainClass>
+                </transformer>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
