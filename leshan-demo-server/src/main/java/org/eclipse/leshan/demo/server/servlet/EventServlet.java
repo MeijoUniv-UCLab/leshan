@@ -18,12 +18,18 @@
 package org.eclipse.leshan.demo.server.servlet;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeoutException;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -31,7 +37,9 @@ import org.eclipse.jetty.servlets.EventSource;
 import org.eclipse.jetty.servlets.EventSourceServlet;
 import org.eclipse.leshan.core.LwM2m.Version;
 import org.eclipse.leshan.core.link.Link;
+import org.eclipse.leshan.core.node.LwM2mChildNode;
 import org.eclipse.leshan.core.node.LwM2mNode;
+import org.eclipse.leshan.core.node.LwM2mObject;
 import org.eclipse.leshan.core.node.LwM2mPath;
 import org.eclipse.leshan.core.node.TimestampedLwM2mNodes;
 import org.eclipse.leshan.core.observation.CompositeObservation;
@@ -67,6 +75,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import jline.internal.Log;
+import jp.ac.meijo.ucl.socket.UnixDomainSocketClient;
 
 public class EventServlet extends EventSourceServlet {
 
@@ -99,12 +108,17 @@ public class EventServlet extends EventSourceServlet {
     private final Set<LeshanEventSource> eventSources = Collections
             .newSetFromMap(new ConcurrentHashMap<LeshanEventSource, Boolean>());
 
+    private final UnixDomainSocketClient client;
+
     private final RegistrationListener registrationListener = new RegistrationListener() {
 
         @Override
         public void registered(Registration registration, Registration previousReg,
                 Collection<Observation> previousObservations) {
             String jReg = null;
+
+            observeFONMSystemObjectsWhenRegistered(registration);
+
             try {
                 jReg = EventServlet.this.mapper.writeValueAsString(registration);
             } catch (JsonProcessingException e) {
@@ -177,6 +191,8 @@ public class EventServlet extends EventSourceServlet {
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
+
+            influxDB(jsonContent, response.getContent());
 
             if (registration != null) {
                 String data = new StringBuilder("{\"ep\":\"") //
@@ -308,6 +324,14 @@ public class EventServlet extends EventSourceServlet {
         module.addSerializer(Version.class, new JacksonVersionSerializer());
         mapper.registerModule(module);
         this.mapper = mapper;
+
+        this.client = new UnixDomainSocketClient();
+        try {
+            client.createSocket();
+            client.connect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public synchronized void sendEvent(String event, String data, String endpoint) {
@@ -404,5 +428,46 @@ public class EventServlet extends EventSourceServlet {
     private class RegUpdate {
         public Registration registration;
         public RegistrationUpdate update;
+    }
+
+    private void observeFONMSystemObjectsWhenRegistered(Registration registration) {
+        Map<Integer, Version> map = registration.getSupportedObject();
+        if (map.keySet().contains(32769)) {
+            String file = "/api/clients/" + registration.getEndpoint() + "/32769/observe";
+            try {
+                URL url = new URL("http", "localhost", 8080, file);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                // リクエストメソッドをPOSTに設定
+                conn.setRequestMethod("POST");
+                // リクエストを送信し、レスポンスコードを取得
+                conn.getResponseCode();
+            } catch (IOException e) {
+
+            }
+        }
+    }
+
+    private void influxDB(String jsonContent, LwM2mChildNode node) {
+        if (!(node instanceof LwM2mObject))
+            return;
+        LwM2mObject obj = (LwM2mObject) node;
+
+        if (obj.getId() != 32769)
+            return;
+
+        if (!client.isConnected()) {
+            try {
+                client.createSocket();
+                client.connect();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            client.sendRequestAndWaitForResult(ByteBuffer.wrap(jsonContent.getBytes(StandardCharsets.UTF_8)));
+        } catch (IOException | TimeoutException e) {
+            Log.warn("Error while waiting response");
+
+        }
     }
 }

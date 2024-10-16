@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LWM2M xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="http://openmobilealliance.org/tech/profiles/LWM2M.xsd">
+	<Object ObjectType="MODefinition">
+		<Name>optical closure parameter</Name>
+		<Description1>Objects representing environmental parameters in the optical closure.</Description1>
+		<ObjectID>32769</ObjectID>
+		<ObjectURN>urn:oma:lwm2m:x:32769</ObjectURN>
+		<MultipleInstances>Single</MultipleInstances>
+		<Mandatory>Optional</Mandatory>
+		<Resources>
+			<Item ID="0">
+				<Name>device id</Name>
+				<Operations>RW</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>String</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Arduino nano every's device id</Description>
+			</Item>
+			<Item ID="1">
+				<Name>temperture</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>°c</Units>
+				<Description>Record the temperature in the closure.</Description>
+			</Item>
+			<Item ID="2">
+				<Name>temperture state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Temperature sensor status as a binary value.</Description>
+			</Item>
+			<Item ID="3">
+				<Name>humidity</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>%</Units>
+				<Description>Record the humidity in the closure</Description>
+			</Item>
+			<Item ID="4">
+				<Name>humidity state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Humidity sensor status as a binary value.</Description>
+			</Item>
+			<Item ID="5">
+				<Name>illuminance</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>lx</Units>
+				<Description>Record the illuminance in the closure</Description>
+			</Item>
+			<Item ID="6">
+				<Name>illuminance state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Illuminance sensor status as a binary value</Description>
+			</Item>
+			<Item ID="7">
+				<Name>atmospheric pressure</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>hpa</Units>
+				<Description>Record the atmospheric pressure in the closure</Description>
+			</Item>
+			<Item ID="8">
+				<Name>atmospheric pressure state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>atmospheric pressure sensor status as a binary value</Description>
+			</Item>
+			<Item ID="9">
+				<Name>light power</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>V</Units>
+				<Description>Record the light power in the closure</Description>
+			</Item>
+			<Item ID="10">
+				<Name>light power state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Light power sensor status as a binary value</Description>
+			</Item>
+			<Item ID="11">
+				<Name>battery voltage</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>m</Units>
+				<Description>Record the battery voltage in the closure</Description>
+			</Item>
+			<Item ID="12">
+				<Name>battery level</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Float</Type>
+				<RangeEnumeration />
+				<Units>m</Units>
+				<Description>Record the battery level in the closure</Description>
+			</Item>
+			<Item ID="13">
+				<Name>battery state</Name>
+				<Operations>R</Operations>
+				<MultipleInstances>Single</MultipleInstances>
+				<Mandatory>Mandatory</Mandatory>
+				<Type>Boolean</Type>
+				<RangeEnumeration />
+				<Units>
+				</Units>
+				<Description>Battery status as a binary value</Description>
+			</Item>
+		</Resources>
+		<Description2 />
+	</Object>
+</LWM2M>
