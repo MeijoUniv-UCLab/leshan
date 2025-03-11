@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  */
 public class UnixDomainSocketClient implements AutoCloseable {
     private static final String SOCKET_PATH = "/tmp/uds_socket";
-    private static final int BUFFER_SIZE = 1024; // バッファサイズを定義
+    private static final int BUFFER_SIZE = 8192; // バッファサイズを定義
     private static final long DEFAULT_TIMEOUT = 10000;
 
     private SocketChannel socketChannel;

@@ -218,7 +218,7 @@ public class FONMSystemInfluxDB {
      *            書き込むリソースのマップ
      */
     private void writeLwM2mResources(int objId, int objInstId, Map<Integer, LwM2mResource> resources) {
-        if(Objects.isNull(resources)) {
+        if (Objects.isNull(resources)) {
             LOG.warn("WriteApi or resources are null for object ID: {}, instance ID: {}", objId, objInstId);
             return;
         }

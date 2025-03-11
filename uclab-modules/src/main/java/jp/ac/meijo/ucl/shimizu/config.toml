@@ -1,12 +1,12 @@
-token = "qqi67wgoJmnbEM7WIT94yGvCEpC4BhMJp6oIbd4b6lUp5t6-xupqkoffFbaxS1EaqCNl7MTpqN2J2w6fdV1qMg=="
+token = "wqRDpdjFAaUNLhZx1VFsjaE2deIBt04n-4fAxgxgtmPzFCCm8Xp-X0VEbrCRO4BpQLLL6oMzW9bq0nIOqs82Qg=="
 bucket = "object_32769"
-org = "jp.ac.meijo-u.ubilab"
+org = "jp.ac.meijo-u.ucl"
 url = "http://localhost"
 port = 8086
 
 
 #influxd recovery auth create-operator \
-#--org jp.ac.meijo-u.ubilab \
+#--org jp.ac.meijo-u.ucl \
 #--username admin
 #2024-07-15T08:01:24.142992Z	info	Resources opened	{"log_id": "0qPMQ4gW000", "system": "bolt-kvstore", "path": "/Users/shimizu/.influxdbv2/influxd.bolt"}
 #ID			User Name	User ID			Description	Token										Permissions

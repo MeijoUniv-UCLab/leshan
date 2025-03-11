@@ -67,7 +67,7 @@
 				<Operations>R</Operations>
 				<MultipleInstances>Single</MultipleInstances>
 				<Mandatory>Mandatory</Mandatory>
-				<Type>Float</Type>
+				<Type>Integer</Type>
 				<RangeEnumeration />
 				<Units>lx</Units>
 				<Description>Record the illuminance in the closure</Description>
@@ -109,7 +109,7 @@
 				<Operations>R</Operations>
 				<MultipleInstances>Single</MultipleInstances>
 				<Mandatory>Mandatory</Mandatory>
-				<Type>Float</Type>
+				<Type>Integer</Type>
 				<RangeEnumeration />
 				<Units>V</Units>
 				<Description>Record the light power in the closure</Description>

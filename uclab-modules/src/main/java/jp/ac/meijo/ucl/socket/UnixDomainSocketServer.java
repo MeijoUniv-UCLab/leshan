@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class UnixDomainSocketServer implements AutoCloseable {
     protected static final String SOCKET_PATH = "/tmp/uds_socket";
-    protected static final int BUFFER_SIZE = 1024;
+    protected static final int BUFFER_SIZE = 8192;
     protected ServerSocketChannel serverChannel;
     protected Path socketPath;
     protected List<SocketChannel> channelList;
