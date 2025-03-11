@@ -105,7 +105,7 @@ Contributors:
     <module>leshan-demo-servers-shared</module>
     <module>leshan-demo-server</module>
     <module>leshan-demo-bsserver</module>
-    <module>uclab-modules</module>
+    <module>leshan-uclab-extensions</module>
   </modules>
   <scm child.scm.developerConnection.inherit.append.path="false" child.scm.url.inherit.append.path="false">
     <developerConnection>scm:git:ssh://git@github.com/eclipse/leshan.git</developerConnection>

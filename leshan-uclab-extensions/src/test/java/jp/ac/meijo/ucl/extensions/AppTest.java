@@ -1,4 +1,4 @@
-package jp.ac.meijo.ucl;
+package jp.ac.meijo.ucl.extensions;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

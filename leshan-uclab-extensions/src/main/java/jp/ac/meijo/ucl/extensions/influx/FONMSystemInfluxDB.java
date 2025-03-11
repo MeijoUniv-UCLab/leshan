@@ -14,7 +14,7 @@
  *     Kengo Shimizu - implementation
  *******************************************************************************/
 
-package jp.ac.meijo.ucl.shimizu;
+package jp.ac.meijo.ucl.extensions.influx;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,7 +59,7 @@ import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import com.influxdb.exceptions.InfluxException;
 
-import jp.ac.meijo.ucl.socket.UnixDomainSocketServer;
+import jp.ac.meijo.ucl.extensions.server.UclabUnixDomainSocketServer;
 
 /**
  * InfluxDB 操作と LwM2M リソース処理を管理するための FONMSystemInfluxDB クラス。
@@ -222,7 +222,7 @@ public class FONMSystemInfluxDB {
             LOG.warn("WriteApi or resources are null for object ID: {}, instance ID: {}", objId, objInstId);
             return;
         }
-        
+
         if (Objects.isNull(writeApi)) {
             connect();
         }
@@ -353,7 +353,7 @@ public class FONMSystemInfluxDB {
     /**
      * ソケット接続を扱うインナークラス。
      */
-    private class InfluxUnixDomainServer extends UnixDomainSocketServer {
+    private class InfluxUnixDomainServer extends UclabUnixDomainSocketServer {
         private final FONMSystemInfluxDB db;
 
         public InfluxUnixDomainServer(FONMSystemInfluxDB db) {

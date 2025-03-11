@@ -14,7 +14,7 @@
  *     Kengo Shimizu - implementation
  *******************************************************************************/
 
-package jp.ac.meijo.ucl.shimizu;
+package jp.ac.meijo.ucl.extensions.influx;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

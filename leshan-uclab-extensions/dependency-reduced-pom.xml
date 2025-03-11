@@ -7,8 +7,8 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>jp.ac.meijo.ucl</groupId>
-  <artifactId>uclab-modules</artifactId>
-  <name>uclab-modules</name>
+  <artifactId>leshan-uclab-extensions</artifactId>
+  <name>leshan-uclab-extensions</name>
   <url>https://www.ucl.meijo-u.ac.jp</url>
   <build>
     <plugins>
@@ -24,7 +24,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>jp.ac.meijo.ucl.shimizu.FONMSystemInfluxDB</mainClass>
+                  <mainClass>jp.ac.meijo.ucl.extensions.influx.FONMSystemInfluxDB</mainClass>
                 </transformer>
               </transformers>
               <filters>

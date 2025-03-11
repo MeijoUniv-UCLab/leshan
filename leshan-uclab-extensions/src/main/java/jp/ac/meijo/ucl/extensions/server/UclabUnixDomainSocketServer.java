@@ -14,7 +14,7 @@
  *     Kengo Shimizu - implementation
  *******************************************************************************/
 
-package jp.ac.meijo.ucl.socket;
+package jp.ac.meijo.ucl.extensions.server;
 
 import java.io.IOException;
 import java.net.StandardProtocolFamily;
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class UnixDomainSocketServer implements AutoCloseable {
+public abstract class UclabUnixDomainSocketServer implements AutoCloseable {
     protected static final String SOCKET_PATH = "/tmp/uds_socket";
     protected static final int BUFFER_SIZE = 8192;
     protected ServerSocketChannel serverChannel;
@@ -46,7 +46,7 @@ public abstract class UnixDomainSocketServer implements AutoCloseable {
     /**
      * INFO : 各メソッドの開始時や重要なイベント DEBUG : INFOより詳細な操作や状態変更 ERROR : エラーが発生する可能性がある箇所
      */
-    protected static final Logger LOG = LoggerFactory.getLogger(UnixDomainSocketServer.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(UclabUnixDomainSocketServer.class);
 
     /**
      * サーバーを起動し、必要なリソースを初期化します。

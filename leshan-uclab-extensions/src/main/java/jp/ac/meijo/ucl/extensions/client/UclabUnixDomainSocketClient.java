@@ -14,7 +14,7 @@
  *     Kengo Shimizu - implementation
  *******************************************************************************/
 
-package jp.ac.meijo.ucl.socket;
+package jp.ac.meijo.ucl.extensions.client;
 
 import java.io.IOException;
 import java.net.StandardProtocolFamily;
@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  * UnixドメインソケットクライアントクラスはUNIXドメインソケットを使用して通信を行うためのクラスです。
  * このクラスはAutoCloseableインターフェースを実装し、try-with-resourcesステートメントで使用できます。
  */
-public class UnixDomainSocketClient implements AutoCloseable {
+public class UclabUnixDomainSocketClient implements AutoCloseable {
     private static final String SOCKET_PATH = "/tmp/uds_socket";
     private static final int BUFFER_SIZE = 8192; // バッファサイズを定義
     private static final long DEFAULT_TIMEOUT = 10000;
@@ -52,13 +52,13 @@ public class UnixDomainSocketClient implements AutoCloseable {
     /**
      * INFO : 各メソッドの開始時や重要なイベント DEBUG : INFOより詳細な操作や状態変更 ERROR : エラーが発生する可能性がある箇所
      */
-    private static final Logger LOG = LoggerFactory.getLogger(UnixDomainSocketClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UclabUnixDomainSocketClient.class);
 
     /**
-     * UnixDomainSocketClientのコンストラクタ。 シングルスレッドの ExecutorService を初期化します。
+     * UclabUnixDomainSocketClientのコンストラクタ。 シングルスレッドの ExecutorService を初期化します。
      */
-    public UnixDomainSocketClient() {
-        LOG.info("Initializing UnixDomainSocketClient");
+    public UclabUnixDomainSocketClient() {
+        LOG.info("Initializing UclabUnixDomainSocketClient");
         this.executorService = Executors.newSingleThreadExecutor();
         LOG.debug("ExecutorService initialized");
 
@@ -111,7 +111,7 @@ public class UnixDomainSocketClient implements AutoCloseable {
             return; // 既に閉じている場合は何もしない
         }
 
-        LOG.info("Closing UnixDomainSocketClient");
+        LOG.info("Closing UclabUnixDomainSocketClient");
         isConnected = false;
 
         try {
