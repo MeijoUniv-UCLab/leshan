@@ -27,7 +27,7 @@ Contributors:
   </parent>
   <artifactId>leshan-lwm2m-servers-shared</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-servers-shared</name>
+  <name>Leshan servers shared</name>
   <description>Shared classes between server and bsserver.</description>
 
   <dependencies>
@@ -39,18 +39,17 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>nl.jqno.equalsverifier</groupId>
+      <artifactId>equalsverifier</artifactId>
     </dependency>
   </dependencies>
 </project>

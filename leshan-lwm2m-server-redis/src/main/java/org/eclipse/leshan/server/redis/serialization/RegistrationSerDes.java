@@ -16,8 +16,6 @@
  *******************************************************************************/
 package org.eclipse.leshan.server.redis.serialization;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -31,6 +29,9 @@ import java.util.Set;
 
 import org.eclipse.leshan.core.LwM2m.LwM2mVersion;
 import org.eclipse.leshan.core.LwM2m.Version;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.link.Link;
 import org.eclipse.leshan.core.link.attributes.Attribute;
 import org.eclipse.leshan.core.link.attributes.AttributeModel;
@@ -60,6 +61,7 @@ public class RegistrationSerDes {
 
     private final AttributeParser attributeParser;
     private final LwM2mPeerSerDes peerSerDes;
+    private final EndPointUriHandler uriHandler;
 
     public RegistrationSerDes(LwM2mPeerSerDes peerSerDes) {
         // Define all supported Attributes
@@ -70,16 +72,22 @@ public class RegistrationSerDes {
         // Create default link Parser
         this.attributeParser = new DefaultAttributeParser(suppportedAttributes);
         this.peerSerDes = peerSerDes;
+        this.uriHandler = new DefaultEndPointUriHandler();
     }
 
     public RegistrationSerDes() {
-        this.attributeParser = new DefaultAttributeParser();
-        this.peerSerDes = new LwM2mPeerSerDes();
+        this(new DefaultAttributeParser(), new LwM2mPeerSerDes());
     }
 
     public RegistrationSerDes(AttributeParser attributeParser, LwM2mPeerSerDes peerSerDes) {
+        this(attributeParser, peerSerDes, new DefaultEndPointUriHandler());
+    }
+
+    public RegistrationSerDes(AttributeParser attributeParser, LwM2mPeerSerDes peerSerDes,
+            EndPointUriHandler uriHandler) {
         this.attributeParser = attributeParser;
         this.peerSerDes = peerSerDes;
+        this.uriHandler = uriHandler;
     }
 
     public JsonNode jSerialize(Registration r) {
@@ -98,7 +106,7 @@ public class RegistrationSerDes {
             o.put("qm", r.getQueueMode());
         o.put("ep", r.getEndpoint());
         o.put("regId", r.getId());
-        o.put("epUri", r.getLastEndpointUsed().toString());
+        o.put("epUri", r.getEndpointUri().toString());
 
         ArrayNode links = JsonNodeFactory.instance.arrayNode();
         for (Link l : r.getObjectLinks()) {
@@ -165,20 +173,17 @@ public class RegistrationSerDes {
     }
 
     public Registration deserialize(JsonNode jObj) {
-        URI lastEndpointUsed;
+        EndpointUri endpointUri;
         try {
-            lastEndpointUsed = new URI(jObj.get("epUri").asText());
-        } catch (URISyntaxException e1) {
+            endpointUri = uriHandler.createUri(jObj.get("epUri").asText());
+        } catch (IllegalStateException e1) {
             throw new IllegalStateException(
                     String.format("Unable to deserialize last endpoint used URI %s of registration %s/%s",
                             jObj.get("epUri").asText(), jObj.get("regId").asText(), jObj.get("ep").asText()));
         }
 
-// TODO handle backward compatibility ?
-//        Registration.Builder b = new Registration.Builder(jObj.get("regId").asText(), jObj.get("ep").asText(),
-//                IdentitySerDes.deserialize(jObj.get("identity")), lastEndpointUsed);
         Registration.Builder b = new Registration.Builder(jObj.get("regId").asText(), jObj.get("ep").asText(),
-                peerSerDes.deserialize(jObj.get("transportdata")), lastEndpointUsed);
+                peerSerDes.deserialize(jObj.get("transportdata")), endpointUri);
 
         b.bindingMode(BindingMode.parse(jObj.get("bnd").asText()));
         if (jObj.get("qm") != null)

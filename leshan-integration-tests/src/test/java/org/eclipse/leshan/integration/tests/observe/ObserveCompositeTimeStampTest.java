@@ -261,7 +261,7 @@ public class ObserveCompositeTimeStampTest {
         server.waitForNewObservation(observation);
 
         // *** HACK send time-stamped notification as Leshan client does not support it *** //
-        byte[] payload = encoder.encodeTimestampedNodes(timestampednodes, contentFormat,
+        byte[] payload = encoder.encodeTimestampedNodes(timestampednodes, contentFormat, null,
                 client.getObjectTree().getModel());
 
         TestObserveUtil.sendNotification(
@@ -273,7 +273,7 @@ public class ObserveCompositeTimeStampTest {
         // verify result
         ObserveCompositeResponse response = server.waitForNotificationOf(observation);
         assertThat(response).hasContentFormat(contentFormat, givenServerEndpointProvider);
-        assertThat(response.getContent()).containsExactlyEntriesOf(timestampednodes.getNodes());
+        assertThat(response.getContent()).containsExactlyEntriesOf(timestampednodes.getMostRecentNodes());
         assertThat(response.getTimestampedLwM2mNodes()).isEqualTo(timestampednodes);
     }
 
@@ -363,7 +363,7 @@ public class ObserveCompositeTimeStampTest {
         server.waitForNewObservation(observation);
 
         // *** HACK send time-stamped notification as Leshan client does not support it *** //
-        byte[] payload = encoder.encodeTimestampedNodes(timestampednodes, contentFormat,
+        byte[] payload = encoder.encodeTimestampedNodes(timestampednodes, contentFormat, null,
                 client.getObjectTree().getModel());
 
         TestObserveUtil.sendNotification(

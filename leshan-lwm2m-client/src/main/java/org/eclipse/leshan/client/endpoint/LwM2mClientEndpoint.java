@@ -15,22 +15,14 @@
  *******************************************************************************/
 package org.eclipse.leshan.client.endpoint;
 
-import java.net.URI;
-
 import org.eclipse.leshan.client.servers.LwM2mServer;
-import org.eclipse.leshan.core.endpoint.Protocol;
+import org.eclipse.leshan.core.endpoint.LwM2mEndpoint;
 import org.eclipse.leshan.core.request.UplinkRequest;
 import org.eclipse.leshan.core.response.ErrorCallback;
 import org.eclipse.leshan.core.response.LwM2mResponse;
 import org.eclipse.leshan.core.response.ResponseCallback;
 
-public interface LwM2mClientEndpoint {
-
-    Protocol getProtocol();
-
-    URI getURI();
-
-    String getDescription();
+public interface LwM2mClientEndpoint extends LwM2mEndpoint {
 
     void forceReconnection(LwM2mServer server, boolean resume);
 

@@ -22,11 +22,11 @@ import static org.eclipse.leshan.bsserver.BootstrapFailureCause.NO_BOOTSTRAP_CON
 import static org.eclipse.leshan.bsserver.BootstrapFailureCause.REQUEST_FAILED;
 import static org.eclipse.leshan.bsserver.BootstrapFailureCause.UNAUTHORIZED;
 
-import java.net.URI;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.leshan.bsserver.BootstrapSessionManager.BootstrapPolicy;
 import org.eclipse.leshan.bsserver.request.BootstrapDownlinkRequestSender;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.peer.LwM2mPeer;
 import org.eclipse.leshan.core.request.BootstrapFinishRequest;
 import org.eclipse.leshan.core.request.BootstrapRequest;
@@ -37,6 +37,7 @@ import org.eclipse.leshan.core.response.LwM2mResponse;
 import org.eclipse.leshan.core.response.ResponseCallback;
 import org.eclipse.leshan.core.response.SendableResponse;
 import org.eclipse.leshan.core.util.Validate;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,30 +65,41 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
     protected final ConcurrentHashMap<String, BootstrapSession> onGoingSession = new ConcurrentHashMap<>();
     protected final BootstrapSessionManager sessionManager;
     protected final BootstrapSessionListener listener;
+    protected final ServerEndpointNameProvider endpointNameProvider;
 
     public DefaultBootstrapHandler(BootstrapDownlinkRequestSender sender, BootstrapSessionManager sessionManager,
-            BootstrapSessionListener listener) {
-        this(sender, sessionManager, listener, DEFAULT_TIMEOUT);
+            ServerEndpointNameProvider endpointNameProvider, BootstrapSessionListener listener) {
+        this(sender, sessionManager, endpointNameProvider, listener, DEFAULT_TIMEOUT);
     }
 
     public DefaultBootstrapHandler(BootstrapDownlinkRequestSender sender, BootstrapSessionManager sessionManager,
-            BootstrapSessionListener listener, long requestTimeout) {
+            ServerEndpointNameProvider endpointNameProvider, BootstrapSessionListener listener, long requestTimeout) {
         Validate.notNull(sender);
         Validate.notNull(sessionManager);
         Validate.notNull(listener);
         this.sender = sender;
         this.sessionManager = sessionManager;
+        this.endpointNameProvider = endpointNameProvider;
         this.listener = listener;
         this.requestTimeout = requestTimeout;
     }
 
     @Override
-    public SendableResponse<BootstrapResponse> bootstrap(LwM2mPeer sender, BootstrapRequest request, URI endpointUsed) {
+    public SendableResponse<BootstrapResponse> bootstrap(LwM2mPeer sender, BootstrapRequest request,
+            EndpointUri endpointUsed) {
+        // Extract Endpoint Name
         String endpoint = request.getEndpointName();
+        if (endpoint == null) {
+            // find endpoint name from identity
+            endpoint = endpointNameProvider.getEndpointName(sender.getIdentity());
+            if (endpoint == null) {
+                return new SendableResponse<>(BootstrapResponse.badRequest("endpoint name missing"));
+            }
+        }
 
         // Start session, checking the BS credentials
         final BootstrapSession session;
-        session = sessionManager.begin(request, sender, endpointUsed);
+        session = sessionManager.begin(endpoint, request, sender, endpointUsed);
         listener.sessionInitiated(request, sender);
 
         if (!session.isAuthorized()) {
@@ -117,15 +129,13 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
             }
 
             // Start bootstrap once response is sent.
-            Runnable onSent = new Runnable() {
-                @Override
-                public void run() {
-                    startBootstrap(session);
-                }
-            };
+            Runnable onSent = () -> startBootstrap(session);
+
             return new SendableResponse<>(BootstrapResponse.success(), onSent);
 
-        } catch (RuntimeException e) {
+        } catch (
+
+        RuntimeException e) {
             LOG.warn("Unexpected error at bootstrap start-up for {}", session, e);
             stopSession(session, INTERNAL_SERVER_ERROR);
             return new SendableResponse<>(BootstrapResponse.internalServerError(e.getMessage()));
@@ -137,13 +147,14 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
     }
 
     protected void stopSession(BootstrapSession session, BootstrapFailureCause cause) {
-        if (!onGoingSession.remove(session.getEndpoint(), session)) {
-            if (!session.isCancelled()) {
-                LOG.warn("{} was already removed", session);
-            }
+        if (!onGoingSession.remove(session.getEndpoint(), session) //
+                && !session.isCancelled()) {
+            LOG.warn("{} was already removed", session);
         }
         // if there is no cause of failure, this is a success
-        if (cause == null) {
+        if (cause == null)
+
+        {
             sessionManager.end(session);
             listener.end(session);
         } else {
@@ -204,6 +215,7 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
         }
     }
 
+    @SuppressWarnings("java:S2445")
     protected <T extends LwM2mResponse> void send(BootstrapSession session, DownlinkBootstrapRequest<T> request,
             ResponseCallback<T> responseCallback, ErrorCallback errorCallback) {
         synchronized (session) {
@@ -219,7 +231,7 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
 
         private final BootstrapSession session;
 
-        public SafeResponseCallback(BootstrapSession session) {
+        protected SafeResponseCallback(BootstrapSession session) {
             this.session = session;
         }
 
@@ -240,7 +252,7 @@ public class DefaultBootstrapHandler implements BootstrapHandler {
 
         private final BootstrapSession session;
 
-        public SafeErrorCallback(BootstrapSession session) {
+        protected SafeErrorCallback(BootstrapSession session) {
             this.session = session;
         }
 

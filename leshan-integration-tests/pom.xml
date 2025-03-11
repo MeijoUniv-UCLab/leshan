@@ -24,7 +24,7 @@ Contributors:
     <relativePath>../build-config/pom.xml</relativePath>
   </parent>
   <artifactId>leshan-integration-tests</artifactId>
-  <name>leshan-integration tests</name>
+  <name>Leshan integration tests</name>
   <description>The client/server integrations tests for leshan</description>
 
   <dependencies>
@@ -82,12 +82,7 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

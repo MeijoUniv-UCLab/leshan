@@ -17,18 +17,21 @@ package org.eclipse.leshan.integration.tests.util;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.scandium.config.DtlsConfig;
 import org.eclipse.californium.scandium.config.DtlsConfig.DtlsRole;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.lwm2m.LwM2mLinkParser;
 import org.eclipse.leshan.core.node.codec.DefaultLwM2mDecoder;
@@ -39,6 +42,7 @@ import org.eclipse.leshan.integration.tests.util.cf.CertPair;
 import org.eclipse.leshan.integration.tests.util.cf.MapBasedCertificateProvider;
 import org.eclipse.leshan.integration.tests.util.cf.MapBasedRawPublicKeyProvider;
 import org.eclipse.leshan.server.LeshanServerBuilder;
+import org.eclipse.leshan.server.endpoint.DefaultCompositeServerEndpointsProvider;
 import org.eclipse.leshan.server.endpoint.LwM2mServerEndpointsProvider;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
 import org.eclipse.leshan.server.model.VersionedModelProvider;
@@ -48,6 +52,7 @@ import org.eclipse.leshan.server.registration.RegistrationDataExtractor;
 import org.eclipse.leshan.server.registration.RegistrationIdProvider;
 import org.eclipse.leshan.server.registration.RegistrationStore;
 import org.eclipse.leshan.server.security.Authorizer;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.EditableSecurityStore;
 import org.eclipse.leshan.servers.security.SecurityStore;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
@@ -64,7 +69,7 @@ import org.eclipse.leshan.transport.javacoap.server.endpoint.JavaCoapServerEndpo
 public class LeshanTestServerBuilder extends LeshanServerBuilder {
 
     private Protocol protocolToUse;
-    private String endpointProviderName;
+    private final List<String> endpointProviderNames = new ArrayList<>();
     private boolean serverOnly = false;
     private boolean useSNI = false;
     private final Map<String, KeyPair> keyPairs = new HashMap<>();
@@ -92,35 +97,44 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
             LwM2mModelProvider modelProvider, LwM2mEncoder encoder, LwM2mDecoder decoder, boolean noQueueMode,
             ClientAwakeTimeProvider awakeTimeProvider, RegistrationIdProvider registrationIdProvider,
             RegistrationDataExtractor registrationDataExtractor, LwM2mLinkParser linkParser,
-            ServerSecurityInfo serverSecurityInfo, boolean updateRegistrationOnNotification,
+            EndPointUriHandler uriHandler, ServerSecurityInfo serverSecurityInfo,
+            ServerEndpointNameProvider endpointNameProvider, boolean updateRegistrationOnNotification,
             boolean updateRegistrationOnSend) {
 
         // create endpoint provider.
         if (endpointsProvider == null) {
-            CaliforniumServerEndpointsProvider.Builder builder;
-            switch (endpointProviderName) {
-            case "Californium":
-                builder = new CaliforniumServerEndpointsProvider.Builder(getCaliforniumProtocolProvider(protocolToUse));
-                builder.addEndpoint(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), protocolToUse);
-                endpointsProvider = builder.build();
-                break;
-            case "Californium-OSCORE":
-                builder = new CaliforniumServerEndpointsProvider.Builder(
-                        getCaliforniumProtocolProviderSupportingOscore(protocolToUse));
-                builder.addEndpoint(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), protocolToUse);
-                endpointsProvider = builder.build();
-                break;
-            case "java-coap":
-                endpointsProvider = getJavaCoapProtocolProvider(protocolToUse);
-                break;
-            default:
-                throw new IllegalStateException(
-                        String.format("Unknown endpoint provider : [%s]", endpointProviderName));
+            List<LwM2mServerEndpointsProvider> providers = new ArrayList<>();
+
+            for (String endpointProviderName : endpointProviderNames) {
+                CaliforniumServerEndpointsProvider.Builder builder;
+                switch (endpointProviderName) {
+                case "Californium":
+                    builder = new CaliforniumServerEndpointsProvider.Builder(
+                            getCaliforniumProtocolProvider(protocolToUse));
+                    builder.addEndpoint(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), protocolToUse);
+                    endpointsProvider = builder.build();
+                    break;
+                case "Californium-OSCORE":
+                    builder = new CaliforniumServerEndpointsProvider.Builder(
+                            getCaliforniumProtocolProviderSupportingOscore(protocolToUse));
+                    builder.addEndpoint(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), protocolToUse);
+                    endpointsProvider = builder.build();
+                    break;
+                case "java-coap":
+                    endpointsProvider = getJavaCoapProtocolProvider(protocolToUse);
+                    break;
+                default:
+                    throw new IllegalStateException(
+                            String.format("Unknown endpoint provider : [%s]", endpointProviderName));
+                }
+                providers.add(endpointsProvider);
             }
+            endpointsProvider = new DefaultCompositeServerEndpointsProvider(providers);
         }
         return new LeshanTestServer(endpointsProvider, registrationStore, securityStore, authorizer, modelProvider,
                 encoder, decoder, noQueueMode, awakeTimeProvider, registrationIdProvider, registrationDataExtractor,
-                linkParser, serverSecurityInfo, updateRegistrationOnNotification, updateRegistrationOnSend);
+                linkParser, uriHandler, serverSecurityInfo, endpointNameProvider, updateRegistrationOnNotification,
+                updateRegistrationOnSend);
     }
 
     public static LeshanTestServerBuilder givenServerUsing(Protocol protocolToUse) {
@@ -131,8 +145,10 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
         return new LeshanTestServerBuilder();
     }
 
-    public LeshanTestServerBuilder with(String endpointProvider) {
-        this.endpointProviderName = endpointProvider;
+    public LeshanTestServerBuilder with(String... endpointProviders) {
+        for (String endpointProvider : endpointProviders) {
+            this.endpointProviderNames.add(endpointProvider);
+        }
         return this;
     }
 
@@ -204,10 +220,15 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
         return this;
     }
 
+    public LeshanTestServerBuilder withRedisRegistrationStore() {
+        setRegistrationStore(RedisTestUtil.createRedisRegistrationStore());
+        return this;
+    }
+
     protected ServerProtocolProvider getCaliforniumProtocolProvider(Protocol protocol) {
-        if (protocolToUse.equals(Protocol.COAP)) {
+        if (protocol.equals(Protocol.COAP)) {
             return new CoapServerProtocolProvider();
-        } else if (protocolToUse.equals(Protocol.COAPS)) {
+        } else if (protocol.equals(Protocol.COAPS)) {
             return new CoapsServerProtocolProvider(dtlsConfig -> {
                 if (!keyPairs.isEmpty()) {
                     dtlsConfig.setCertificateIdentityProvider(new MapBasedRawPublicKeyProvider(keyPairs));
@@ -234,10 +255,11 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
     }
 
     private ServerProtocolProvider getCaliforniumProtocolProviderSupportingOscore(Protocol protocol) {
-        if (protocolToUse.equals(Protocol.COAP)) {
+        if (protocol.equals(Protocol.COAP)) {
             return new CoapServerProtocolProvider() {
                 @Override
-                public CaliforniumServerEndpointFactory createDefaultEndpointFactory(URI uri) {
+                public CaliforniumServerEndpointFactory createDefaultEndpointFactory(EndpointUri uri,
+                        EndPointUriHandler uriHandler) {
                     return new CoapOscoreServerEndpointFactory(uri);
                 }
             };
@@ -247,11 +269,11 @@ public class LeshanTestServerBuilder extends LeshanServerBuilder {
     }
 
     protected LwM2mServerEndpointsProvider getJavaCoapProtocolProvider(Protocol protocol) {
-        if (protocolToUse.equals(Protocol.COAP)) {
+        if (protocol.equals(Protocol.COAP)) {
             return new JavaCoapServerEndpointsProvider(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        } else if (protocolToUse.equals(Protocol.COAP_TCP)) {
+        } else if (protocol.equals(Protocol.COAP_TCP)) {
             return new JavaCoapTcpServerEndpointsProvider(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
-        } else if (protocolToUse.equals(Protocol.COAPS_TCP)) {
+        } else if (protocol.equals(Protocol.COAPS_TCP)) {
             return new JavaCoapsTcpServerEndpointsProvider(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0));
         }
         throw new IllegalStateException(String.format("No Californium Protocol Provider for protocol %s", protocol));

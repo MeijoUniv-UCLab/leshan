@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.cert.Certificate;
 import java.util.List;
 import java.util.stream.Stream;
@@ -49,8 +48,9 @@ import org.eclipse.californium.scandium.DTLSConnector;
 import org.eclipse.californium.scandium.config.DtlsConnectorConfig.Builder;
 import org.eclipse.californium.scandium.dtls.ConnectionId;
 import org.eclipse.californium.scandium.dtls.PskPublicInformation;
-import org.eclipse.californium.scandium.dtls.pskstore.AdvancedPskStore;
+import org.eclipse.californium.scandium.dtls.pskstore.PskStore;
 import org.eclipse.leshan.client.servers.ServerInfo;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.request.ReadRequest;
 import org.eclipse.leshan.core.request.exception.SendFailedException;
@@ -132,14 +132,14 @@ public class ServerOnlySecurityTest {
 
                         // tricks to be able to change psk information on the fly
                         // DtlsConnectorConfig.Builder newBuilder = DtlsConnectorConfig.builder(dtlsConfig);
-                        AdvancedPskStore pskStore = dtlsConfigBuilder.getIncompleteConfig().getAdvancedPskStore();
+                        PskStore pskStore = dtlsConfigBuilder.getIncompleteConfig().getPskStore();
                         if (pskStore != null) {
                             PskPublicInformation identity = pskStore.getIdentity(null, null);
                             SecretKey key = pskStore
                                     .requestPskSecretResult(ConnectionId.EMPTY, null, identity, null, null, null, false)
                                     .getSecret();
                             singlePSKStore = new SinglePSKStore(identity, key);
-                            dtlsConfigBuilder.setAdvancedPskStore(singlePSKStore);
+                            dtlsConfigBuilder.setPskStore(singlePSKStore);
                         }
                         return dtlsConfigBuilder;
                     }
@@ -210,7 +210,7 @@ public class ServerOnlySecurityTest {
         request.setMID(0);
         byte[] ping = new UdpDataSerializer().getByteArray(request);
         // sent it
-        URI destinationUri = server.getEndpoint(Protocol.COAPS).getURI();
+        EndpointUri destinationUri = server.getEndpoint(Protocol.COAPS).getURI();
         connector.send(RawData.outbound(ping,
                 new AddressEndpointContext(destinationUri.getHost(), destinationUri.getPort()), callback, false));
         // Wait until new handshake DTLS is done

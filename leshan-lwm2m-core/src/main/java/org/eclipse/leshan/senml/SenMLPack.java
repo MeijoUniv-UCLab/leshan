@@ -17,6 +17,7 @@ package org.eclipse.leshan.senml;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The class representing the SenML Pack.
@@ -25,32 +26,22 @@ import java.util.List;
  */
 public class SenMLPack {
 
-    private List<SenMLRecord> records;
+    private final List<SenMLRecord> records;
 
     public SenMLPack() {
+        records = new ArrayList<>();
     }
 
     public SenMLPack(List<SenMLRecord> records) {
-        this.records = records;
+        this.records = Collections.unmodifiableList(new ArrayList<>(records));
     }
 
     public void addRecord(SenMLRecord record) {
-        if (records == null) {
-            records = new ArrayList<>();
-        }
-
         records.add(record);
     }
 
     public void addRecords(List<SenMLRecord> records) {
-        if (this.records == null) {
-            this.records = new ArrayList<>();
-        }
         this.records.addAll(records);
-    }
-
-    public void setRecords(List<SenMLRecord> records) {
-        this.records = records;
     }
 
     public List<SenMLRecord> getRecords() {
@@ -60,32 +51,22 @@ public class SenMLPack {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((records == null) ? 0 : records.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        SenMLPack other = (SenMLPack) obj;
-        if (records == null) {
-            if (other.records != null)
-                return false;
-        } else if (!records.equals(other.records))
-            return false;
-        return true;
-    }
-
-    @Override
     public String toString() {
         return String.format("SenMLPack [records=%s]", records);
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof SenMLPack))
+            return false;
+        SenMLPack senMLPack = (SenMLPack) o;
+        return Objects.equals(records, senMLPack.records);
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hashCode(records);
     }
 }

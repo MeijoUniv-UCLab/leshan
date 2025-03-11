@@ -70,7 +70,11 @@ public class CoapRequestBuilder implements UplinkRequestVisitor {
         // Create map of attributes
         HashMap<String, String> attributes = new HashMap<>();
         attributes.putAll(request.getAdditionalAttributes());
-        attributes.put("ep", request.getEndpointName());
+
+        String endpoint = request.getEndpointName();
+        if (endpoint != null) {
+            attributes.put("ep", endpoint);
+        }
         if (request.getPreferredContentFormat() != null) {
             attributes.put("pct", Integer.toString(request.getPreferredContentFormat().getCode()));
         }
@@ -90,7 +94,10 @@ public class CoapRequestBuilder implements UplinkRequestVisitor {
         HashMap<String, String> attributes = new HashMap<>();
         attributes.putAll(request.getAdditionalAttributes());
 
-        attributes.put("ep", request.getEndpointName());
+        String endpoint = request.getEndpointName();
+        if (endpoint != null) {
+            attributes.put("ep", endpoint);
+        }
 
         Long lifetime = request.getLifetime();
         if (lifetime != null)
@@ -168,7 +175,7 @@ public class CoapRequestBuilder implements UplinkRequestVisitor {
     @Override
     public void visit(SendRequest request) {
         ContentFormat format = request.getFormat();
-        Opaque payload = Opaque.of(encoder.encodeTimestampedNodes(request.getTimestampedNodes(), format, model));
+        Opaque payload = Opaque.of(encoder.encodeTimestampedNodes(request.getTimestampedNodes(), format, null, model));
 
         coapRequestBuilder = CoapRequest.post("/dp") //
                 .payload(payload) //

@@ -18,23 +18,34 @@
 package org.eclipse.leshan.core.json;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.model.ResourceModel.Type;
 
 public class JsonArrayEntry {
 
-    private String name;
+    private final String name;
 
-    private Number floatValue;
+    private final Number floatValue;
 
-    private Boolean booleanValue;
+    private final Boolean booleanValue;
 
-    private String objectLinkValue;
+    private final String objectLinkValue;
 
-    private String stringValue;
+    private final String stringValue;
 
-    private BigDecimal time;
+    private final BigDecimal time;
+
+    public JsonArrayEntry(String name, Number floatValue, Boolean booleanValue, String objectLinkValue,
+            String stringValue, BigDecimal time) {
+        this.name = name;
+        this.floatValue = floatValue;
+        this.booleanValue = booleanValue;
+        this.objectLinkValue = objectLinkValue;
+        this.stringValue = stringValue;
+        this.time = time;
+    }
 
     public ResourceModel.Type getType() {
         if (booleanValue != null) {
@@ -56,48 +67,24 @@ public class JsonArrayEntry {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public BigDecimal getTime() {
         return time;
-    }
-
-    public void setTime(BigDecimal time) {
-        this.time = time;
     }
 
     public Number getFloatValue() {
         return floatValue;
     }
 
-    public void setFloatValue(Number floatValue) {
-        this.floatValue = floatValue;
-    }
-
     public Boolean getBooleanValue() {
         return booleanValue;
-    }
-
-    public void setBooleanValue(Boolean booleanValue) {
-        this.booleanValue = booleanValue;
     }
 
     public String getObjectLinkValue() {
         return objectLinkValue;
     }
 
-    public void setObjectLinkValue(String objectLinkValue) {
-        this.objectLinkValue = objectLinkValue;
-    }
-
     public String getStringValue() {
         return stringValue;
-    }
-
-    public void setStringValue(String stringValue) {
-        this.stringValue = stringValue;
     }
 
     public Object getResourceValue() {
@@ -118,65 +105,32 @@ public class JsonArrayEntry {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((booleanValue == null) ? 0 : booleanValue.hashCode());
-        result = prime * result + ((floatValue == null) ? 0 : floatValue.hashCode());
-        result = prime * result + ((name == null) ? 0 : name.hashCode());
-        result = prime * result + ((objectLinkValue == null) ? 0 : objectLinkValue.hashCode());
-        result = prime * result + ((stringValue == null) ? 0 : stringValue.hashCode());
-        result = prime * result + ((time == null) ? 0 : time.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        JsonArrayEntry other = (JsonArrayEntry) obj;
-        if (booleanValue == null) {
-            if (other.booleanValue != null)
-                return false;
-        } else if (!booleanValue.equals(other.booleanValue))
-            return false;
-        if (floatValue == null) {
-            if (other.floatValue != null)
-                return false;
-        } else if (!floatValue.equals(other.floatValue))
-            return false;
-        if (name == null) {
-            if (other.name != null)
-                return false;
-        } else if (!name.equals(other.name))
-            return false;
-        if (objectLinkValue == null) {
-            if (other.objectLinkValue != null)
-                return false;
-        } else if (!objectLinkValue.equals(other.objectLinkValue))
-            return false;
-        if (stringValue == null) {
-            if (other.stringValue != null)
-                return false;
-        } else if (!stringValue.equals(other.stringValue))
-            return false;
-        if (time == null) {
-            if (other.time != null)
-                return false;
-        } else if (!time.equals(other.time))
-            return false;
-        return true;
-    }
-
-    @Override
     public String toString() {
         return String.format(
                 "JsonArrayEntry [name=%s, floatValue=%s, booleanValue=%s, objectLinkValue=%s, stringValue=%s, time=%s]",
                 name, floatValue, booleanValue, objectLinkValue, stringValue, time);
     }
 
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof JsonArrayEntry))
+            return false;
+        JsonArrayEntry that = (JsonArrayEntry) o;
+
+        boolean comparablyEqual = (time == null && that.time == null)
+                || (time != null && that.time != null && time.compareTo(that.time) == 0);
+
+        return Objects.equals(name, that.name) && Objects.equals(floatValue, that.floatValue)
+                && Objects.equals(booleanValue, that.booleanValue)
+                && Objects.equals(objectLinkValue, that.objectLinkValue)
+                && Objects.equals(stringValue, that.stringValue) && comparablyEqual;
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hash(name, floatValue, booleanValue, objectLinkValue, stringValue,
+                time != null ? time.stripTrailingZeros() : null);
+    }
 }

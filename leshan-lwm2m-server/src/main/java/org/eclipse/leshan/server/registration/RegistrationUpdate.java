@@ -128,7 +128,7 @@ public class RegistrationUpdate {
         Date lastUpdate = new Date();
 
         Registration.Builder builder = new Registration.Builder(registration.getId(), registration.getEndpoint(),
-                transportData, registration.getLastEndpointUsed());
+                transportData, registration.getEndpointUri());
 
         builder.registrationDate(lastUpdate)
                 // unmodifiable data
@@ -232,34 +232,28 @@ public class RegistrationUpdate {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(objectLinks);
-        result = prime * result + Objects.hash(additionalAttributes, alternatePath, applicationData, availableInstances,
-                bindingMode, clientTransportData, lifeTimeInSec, registrationId, smsNumber, supportedContentFormats,
-                supportedObjects);
-        return result;
+    public final boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof RegistrationUpdate))
+            return false;
+        RegistrationUpdate that = (RegistrationUpdate) o;
+        return Objects.equals(registrationId, that.registrationId)
+                && Objects.equals(clientTransportData, that.clientTransportData)
+                && Objects.equals(lifeTimeInSec, that.lifeTimeInSec) && Objects.equals(smsNumber, that.smsNumber)
+                && Objects.equals(bindingMode, that.bindingMode) && Arrays.equals(objectLinks, that.objectLinks)
+                && Objects.equals(alternatePath, that.alternatePath)
+                && Objects.equals(supportedContentFormats, that.supportedContentFormats)
+                && Objects.equals(supportedObjects, that.supportedObjects)
+                && Objects.equals(availableInstances, that.availableInstances)
+                && Objects.equals(additionalAttributes, that.additionalAttributes)
+                && Objects.equals(applicationData, that.applicationData);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        RegistrationUpdate other = (RegistrationUpdate) obj;
-        return Objects.equals(additionalAttributes, other.additionalAttributes)
-                && Objects.equals(alternatePath, other.alternatePath)
-                && Objects.equals(applicationData, other.applicationData)
-                && Objects.equals(availableInstances, other.availableInstances)
-                && Objects.equals(bindingMode, other.bindingMode)
-                && Objects.equals(clientTransportData, other.clientTransportData)
-                && Objects.equals(lifeTimeInSec, other.lifeTimeInSec) && Arrays.equals(objectLinks, other.objectLinks)
-                && Objects.equals(registrationId, other.registrationId) && Objects.equals(smsNumber, other.smsNumber)
-                && Objects.equals(supportedContentFormats, other.supportedContentFormats)
-                && Objects.equals(supportedObjects, other.supportedObjects);
+    public final int hashCode() {
+        return Objects.hash(registrationId, clientTransportData, lifeTimeInSec, smsNumber, bindingMode,
+                Arrays.hashCode(objectLinks), alternatePath, supportedContentFormats, supportedObjects,
+                availableInstances, additionalAttributes, applicationData);
     }
 }

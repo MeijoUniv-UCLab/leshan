@@ -16,7 +16,6 @@
 package org.eclipse.leshan.transport.californium.server.endpoint.coap;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,9 +32,12 @@ import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.elements.config.Configuration.ModuleDefinitionsProvider;
 import org.eclipse.californium.elements.config.SystemConfig;
 import org.eclipse.californium.elements.config.UdpConfig;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.server.LeshanServer;
+import org.eclipse.leshan.server.endpoint.EffectiveEndpointUriProvider;
 import org.eclipse.leshan.server.observation.LwM2mNotificationReceiver;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
 import org.eclipse.leshan.transport.californium.DefaultExceptionTranslator;
@@ -60,18 +62,20 @@ public class CoapServerEndpointFactory implements CaliforniumServerEndpointFacto
         return Arrays.asList(SystemConfig.DEFINITIONS, CoapConfig.DEFINITIONS, UdpConfig.DEFINITIONS);
     }
 
-    protected final URI endpointUri;
+    protected final EndpointUri endpointUri;
     protected final String loggingTagPrefix;
     protected final Configuration configuration;
     protected final Consumer<CoapEndpoint.Builder> coapEndpointConfigInitializer;
+    protected final EndPointUriHandler uriHandler;
 
-    public CoapServerEndpointFactory(URI uri) {
-        this(uri, null, null, null);
+    public CoapServerEndpointFactory(EndpointUri uri) {
+        this(uri, null, null, null, new DefaultEndPointUriHandler());
     }
 
-    public CoapServerEndpointFactory(URI uri, String loggingTagPrefix, Configuration configuration,
-            Consumer<CoapEndpoint.Builder> coapEndpointConfigInitializer) {
-        EndpointUriUtil.validateURI(uri);
+    public CoapServerEndpointFactory(EndpointUri uri, String loggingTagPrefix, Configuration configuration,
+            Consumer<CoapEndpoint.Builder> coapEndpointConfigInitializer, EndPointUriHandler uriHandler) {
+        this.uriHandler = uriHandler;
+        uriHandler.validateURI(uri);
 
         this.endpointUri = uri;
         this.loggingTagPrefix = loggingTagPrefix == null ? "LWM2M Server" : loggingTagPrefix;
@@ -90,7 +94,7 @@ public class CoapServerEndpointFactory implements CaliforniumServerEndpointFacto
     }
 
     @Override
-    public URI getUri() {
+    public EndpointUri getUri() {
         return endpointUri;
     }
 
@@ -104,7 +108,8 @@ public class CoapServerEndpointFactory implements CaliforniumServerEndpointFacto
 
     @Override
     public CoapEndpoint createCoapEndpoint(Configuration defaultConfiguration, ServerSecurityInfo serverSecurityInfo,
-            LwM2mNotificationReceiver notificationReceiver, LeshanServer server) {
+            LwM2mNotificationReceiver notificationReceiver, LeshanServer server,
+            EffectiveEndpointUriProvider uriProvider) {
 
         // defined Configuration to use
         Configuration configurationToUse;
@@ -116,8 +121,8 @@ public class CoapServerEndpointFactory implements CaliforniumServerEndpointFacto
             configurationToUse = configuration;
         }
 
-        return createEndpointBuilder(EndpointUriUtil.getSocketAddr(endpointUri), configurationToUse,
-                notificationReceiver, server).build();
+        return createEndpointBuilder(uriHandler.getSocketAddr(endpointUri), configurationToUse, notificationReceiver,
+                server, uriProvider).build();
     }
 
     /**
@@ -129,15 +134,16 @@ public class CoapServerEndpointFactory implements CaliforniumServerEndpointFacto
      * @return the {@link Builder} used for unsecured communication.
      */
     protected CoapEndpoint.Builder createEndpointBuilder(InetSocketAddress address, Configuration coapConfig,
-            LwM2mNotificationReceiver notificationReceiver, LeshanServer server) {
+            LwM2mNotificationReceiver notificationReceiver, LeshanServer server,
+            EffectiveEndpointUriProvider uriProvider) {
         CoapEndpoint.Builder builder = new CoapEndpoint.Builder();
 
         builder.setConnector(createConnector(address, coapConfig));
         builder.setConfiguration(coapConfig);
         builder.setLoggingTag(getLoggingTag());
 
-        builder.setObservationStore(new LwM2mObservationStore(server.getRegistrationStore(), notificationReceiver,
-                new ObservationSerDes(new UdpDataParser(), new UdpDataSerializer())));
+        builder.setObservationStore(new LwM2mObservationStore(uriProvider, server.getRegistrationStore(),
+                notificationReceiver, new ObservationSerDes(new UdpDataParser(), new UdpDataSerializer())));
 
         if (coapEndpointConfigInitializer != null)
             coapEndpointConfigInitializer.accept(builder);

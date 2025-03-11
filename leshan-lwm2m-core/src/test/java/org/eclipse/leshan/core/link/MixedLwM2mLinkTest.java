@@ -17,15 +17,19 @@ package org.eclipse.leshan.core.link;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.eclipse.leshan.core.link.attributes.Attribute;
 import org.eclipse.leshan.core.link.attributes.ResourceTypeAttribute;
 import org.eclipse.leshan.core.link.lwm2m.MixedLwM2mLink;
+import org.eclipse.leshan.core.link.lwm2m.attributes.MixedLwM2mAttributeSet;
 import org.eclipse.leshan.core.node.LwM2mPath;
 import org.junit.jupiter.api.Test;
 
-public class MixedLwM2mLinkTest {
+import nl.jqno.equalsverifier.EqualsVerifier;
+
+class MixedLwM2mLinkTest {
 
     @Test
-    public void check_uri_reference() {
+    void check_uri_reference() {
         Link link = new MixedLwM2mLink("/root", LwM2mPath.ROOTPATH, new ResourceTypeAttribute("oma.lwm2m"));
         assertEquals("/root", link.getUriReference());
 
@@ -40,5 +44,22 @@ public class MixedLwM2mLinkTest {
 
         link = new MixedLwM2mLink(null, new LwM2mPath(2));
         assertEquals("/2", link.getUriReference());
+    }
+
+    private class ExtendedMixedLwM2mLink extends MixedLwM2mLink {
+        ExtendedMixedLwM2mLink(String rootPath, LwM2mPath path, Attribute... attributes) {
+            super(rootPath, path, new MixedLwM2mAttributeSet(attributes));
+        }
+
+        @Override
+        public boolean canEqual(Object obj) {
+            return (obj instanceof ExtendedMixedLwM2mLink);
+        }
+    }
+
+    @Test
+    void assertEqualsHashcode() {
+        EqualsVerifier.forClass(MixedLwM2mLink.class).withRedefinedSuperclass()
+                .withRedefinedSubclass(ExtendedMixedLwM2mLink.class).verify();
     }
 }

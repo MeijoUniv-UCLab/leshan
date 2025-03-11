@@ -17,7 +17,6 @@ package org.eclipse.leshan.integration.tests.util;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
@@ -34,6 +33,8 @@ import org.eclipse.leshan.bsserver.LeshanBootstrapServerBuilder;
 import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpointsProvider;
 import org.eclipse.leshan.bsserver.security.BootstrapSecurityStore;
 import org.eclipse.leshan.bsserver.security.BootstrapSecurityStoreAdapter;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.lwm2m.LwM2mLinkParser;
 import org.eclipse.leshan.core.node.codec.DefaultLwM2mDecoder;
@@ -43,6 +44,7 @@ import org.eclipse.leshan.core.node.codec.LwM2mEncoder;
 import org.eclipse.leshan.core.request.DownlinkBootstrapRequest;
 import org.eclipse.leshan.integration.tests.util.cf.CertPair;
 import org.eclipse.leshan.integration.tests.util.cf.MapBasedCertificateProvider;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.EditableSecurityStore;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
 import org.eclipse.leshan.transport.californium.bsserver.endpoint.BootstrapServerProtocolProvider;
@@ -81,8 +83,9 @@ public class LeshanTestBootstrapServerBuilder extends LeshanBootstrapServerBuild
 
     @Override
     protected LeshanTestBootstrapServer createBootstrapServer(LwM2mBootstrapServerEndpointsProvider endpointsProvider,
-            BootstrapSessionManager bsSessionManager, BootstrapHandlerFactory bsHandlerFactory, LwM2mEncoder encoder,
-            LwM2mDecoder decoder, LwM2mLinkParser linkParser, BootstrapSecurityStore securityStore,
+            BootstrapSessionManager bsSessionManager, ServerEndpointNameProvider endpointNameProvider,
+            BootstrapHandlerFactory bsHandlerFactory, LwM2mEncoder encoder, LwM2mDecoder decoder,
+            LwM2mLinkParser linkParser, EndPointUriHandler uriHandler, BootstrapSecurityStore securityStore,
             ServerSecurityInfo serverSecurityInfo) {
 
         // create endpoint provider.
@@ -107,8 +110,8 @@ public class LeshanTestBootstrapServerBuilder extends LeshanBootstrapServerBuild
             }
         }
 
-        return new LeshanTestBootstrapServer(endpointsProvider, bsSessionManager, bsHandlerFactory, encoder, decoder,
-                linkParser, securityStore, serverSecurityInfo, //
+        return new LeshanTestBootstrapServer(endpointsProvider, bsSessionManager, endpointNameProvider,
+                bsHandlerFactory, encoder, decoder, linkParser, uriHandler, securityStore, serverSecurityInfo, //
                 // arguments only needed for LeshanTestBootstrapServer
                 configStore, editableSecurityStore);
     }
@@ -179,9 +182,9 @@ public class LeshanTestBootstrapServerBuilder extends LeshanBootstrapServerBuild
     }
 
     private BootstrapServerProtocolProvider getCaliforniumProtocolProvider(Protocol protocol) {
-        if (protocolToUse.equals(Protocol.COAP)) {
+        if (protocol.equals(Protocol.COAP)) {
             return new CoapBootstrapServerProtocolProvider();
-        } else if (protocolToUse.equals(Protocol.COAPS)) {
+        } else if (protocol.equals(Protocol.COAPS)) {
             return new CoapsBootstrapServerProtocolProvider(dtlsConfig -> {
                 if (!CertPairs.isEmpty()) {
                     dtlsConfig.setCertificateIdentityProvider(new MapBasedCertificateProvider(CertPairs));
@@ -203,11 +206,12 @@ public class LeshanTestBootstrapServerBuilder extends LeshanBootstrapServerBuild
     }
 
     private BootstrapServerProtocolProvider getCaliforniumProtocolProviderSupportingOscore(Protocol protocol) {
-        if (protocolToUse.equals(Protocol.COAP)) {
+        if (protocol.equals(Protocol.COAP)) {
             return new CoapBootstrapServerProtocolProvider() {
                 @Override
-                public CaliforniumBootstrapServerEndpointFactory createDefaultEndpointFactory(URI uri) {
-                    return new CoapOscoreBootstrapServerEndpointFactory(uri);
+                public CaliforniumBootstrapServerEndpointFactory createDefaultEndpointFactory(EndpointUri uri,
+                        EndPointUriHandler uriHandler) {
+                    return new CoapOscoreBootstrapServerEndpointFactory(uri, uriHandler);
                 }
             };
         }

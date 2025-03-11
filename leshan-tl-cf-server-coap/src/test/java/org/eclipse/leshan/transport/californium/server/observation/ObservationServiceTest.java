@@ -16,12 +16,12 @@
  *******************************************************************************/
 package org.eclipse.leshan.transport.californium.server.observation;
 
+import static org.eclipse.leshan.core.util.TestToolBox.uriHandler;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -29,10 +29,11 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.Link;
 import org.eclipse.leshan.core.node.LwM2mPath;
+import org.eclipse.leshan.core.observation.CompositeObservation;
 import org.eclipse.leshan.core.observation.Observation;
 import org.eclipse.leshan.core.observation.ObservationIdentifier;
 import org.eclipse.leshan.core.observation.SingleObservation;
@@ -55,9 +56,12 @@ import org.eclipse.leshan.server.registration.Registration;
 import org.eclipse.leshan.server.registration.RegistrationStore;
 import org.eclipse.leshan.server.request.LowerLayerConfig;
 import org.eclipse.leshan.server.request.UplinkDeviceManagementRequestReceiver;
+import org.eclipse.leshan.server.security.DefaultAuthorizer;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 public class ObservationServiceTest {
 
@@ -65,6 +69,7 @@ public class ObservationServiceTest {
     RegistrationStore store;
     Registration registration;
     Random r;
+    private final EndpointUri endpointUri = uriHandler.createUri("coap://localhost:5683");
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -76,7 +81,7 @@ public class ObservationServiceTest {
     private Registration givenASimpleRegistration() throws UnknownHostException {
         Registration.Builder builder = new Registration.Builder("4711", "urn:endpoint",
                 new IpPeer(new InetSocketAddress(InetAddress.getLocalHost(), 23452)),
-                EndpointUriUtil.createUri("coap://localhost:5683"));
+                uriHandler.createUri("coap://localhost:5683"));
         return builder.lifeTimeInSec(10000L).bindingMode(EnumSet.of(BindingMode.U))
                 .objectLinks(new Link[] { new Link("/3") }).build();
     }
@@ -164,7 +169,8 @@ public class ObservationServiceTest {
     }
 
     private void createDefaultObservationService() {
-        observationService = new ObservationServiceImpl(store, new DummyEndpointsProvider());
+        observationService = new ObservationServiceImpl(store, new DummyEndpointsProvider(),
+                new DefaultAuthorizer(null));
     }
 
     private Observation givenAnObservation(String registrationId, LwM2mPath target) {
@@ -176,8 +182,8 @@ public class ObservationServiceTest {
 
         byte[] token = new byte[8];
         r.nextBytes(token);
-        SingleObservation observation = new SingleObservation(new ObservationIdentifier(token), registrationId, target,
-                ContentFormat.DEFAULT, null, null);
+        SingleObservation observation = new SingleObservation(new ObservationIdentifier(endpointUri, token),
+                registrationId, target, ContentFormat.DEFAULT, null, null);
         store.addObservation(registrationId, observation, false);
         return observation;
     }
@@ -186,8 +192,7 @@ public class ObservationServiceTest {
         Registration.Builder builder;
         try {
             builder = new Registration.Builder(registrationId, registrationId + "_ep",
-                    new IpPeer(new InetSocketAddress(InetAddress.getLocalHost(), 10000)),
-                    EndpointUriUtil.createUri("coap://localhost:5683"));
+                    new IpPeer(new InetSocketAddress(InetAddress.getLocalHost(), 10000)), endpointUri);
             return builder.build();
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
@@ -210,7 +215,7 @@ public class ObservationServiceTest {
             }
 
             @Override
-            public URI getURI() {
+            public EndpointUri getURI() {
                 return null;
             }
 
@@ -240,7 +245,7 @@ public class ObservationServiceTest {
         }
 
         @Override
-        public LwM2mServerEndpoint getEndpoint(URI uri) {
+        public LwM2mServerEndpoint getEndpoint(EndpointUri uri) {
             return dummyEndpoint;
         }
 
@@ -261,5 +266,13 @@ public class ObservationServiceTest {
         @Override
         public void destroy() {
         }
+    }
+
+    @Test
+    public void assertEqualsHashcode() {
+        EqualsVerifier.forClass(Observation.class).withRedefinedSubclass(CompositeObservation.class)
+                .withIgnoredFields("protocolData").verify();
+        EqualsVerifier.forClass(Observation.class).withRedefinedSubclass(SingleObservation.class)
+                .withIgnoredFields("protocolData").verify();
     }
 }

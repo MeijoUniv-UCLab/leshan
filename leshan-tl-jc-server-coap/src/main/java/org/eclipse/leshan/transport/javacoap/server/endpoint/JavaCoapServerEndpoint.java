@@ -15,7 +15,6 @@
  *******************************************************************************/
 package org.eclipse.leshan.transport.javacoap.server.endpoint;
 
-import java.net.URI;
 import java.util.SortedMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.observation.Observation;
 import org.eclipse.leshan.core.request.DownlinkDeviceManagementRequest;
@@ -90,8 +89,8 @@ public class JavaCoapServerEndpoint implements LwM2mServerEndpoint {
     }
 
     @Override
-    public URI getURI() {
-        return EndpointUriUtil.createUri(getProtocol().getUriScheme(), coapServer.getLocalSocketAddress());
+    public EndpointUri getURI() {
+        return toolbox.getUriHandler().createUri(getProtocol().getUriScheme(), coapServer.getLocalSocketAddress());
     }
 
     @Override

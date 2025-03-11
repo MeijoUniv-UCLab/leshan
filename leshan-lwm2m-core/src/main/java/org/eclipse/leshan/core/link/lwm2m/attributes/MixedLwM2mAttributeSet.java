@@ -15,6 +15,7 @@
  *******************************************************************************/
 package org.eclipse.leshan.core.link.lwm2m.attributes;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,7 +38,46 @@ import org.eclipse.leshan.core.node.LwM2mPath;
  */
 public class MixedLwM2mAttributeSet extends AttributeSet {
 
-    private Iterable<LwM2mAttribute<?>> lwm2mAttributes;
+    private final Iterable<LwM2mAttribute<?>> lwm2mAttributes = () -> {
+        final Iterator<? extends Attribute> it = asCollection().iterator();
+
+        return new Iterator<LwM2mAttribute<?>>() {
+            private LwM2mAttribute<?> lastAttribute;
+
+            @Override
+            public boolean hasNext() {
+                while (it.hasNext()) {
+                    Attribute next = it.next();
+                    if (next instanceof LwM2mAttribute) {
+                        lastAttribute = (LwM2mAttribute<?>) next;
+                        return true;
+                    } // else we ignore it and continue to check
+                }
+                return false;
+            }
+
+            @Override
+            public LwM2mAttribute<?> next() {
+                if (lastAttribute != null) {
+                    LwM2mAttribute<?> res = lastAttribute;
+                    lastAttribute = null;
+                    return res;
+                } else {
+                    Attribute next = it.next();
+                    if (next instanceof LwM2mAttribute) {
+                        return (LwM2mAttribute<?>) next;
+                    } else {
+                        return this.next();
+                    }
+                }
+            }
+
+            @Override
+            public void remove() {
+                it.remove();
+            }
+        };
+    };
 
     public MixedLwM2mAttributeSet(Attribute... attributes) {
         this(Arrays.asList(attributes));
@@ -45,50 +85,6 @@ public class MixedLwM2mAttributeSet extends AttributeSet {
 
     public MixedLwM2mAttributeSet(Collection<? extends Attribute> attributes) {
         super(attributes);
-        this.lwm2mAttributes = new Iterable<LwM2mAttribute<?>>() {
-
-            @Override
-            public Iterator<LwM2mAttribute<?>> iterator() {
-                final Iterator<? extends Attribute> it = asCollection().iterator();
-
-                return new Iterator<LwM2mAttribute<?>>() {
-                    private LwM2mAttribute<?> lastAttribute;
-
-                    @Override
-                    public boolean hasNext() {
-                        while (it.hasNext()) {
-                            Attribute next = it.next();
-                            if (next instanceof LwM2mAttribute) {
-                                lastAttribute = (LwM2mAttribute<?>) next;
-                                return true;
-                            } // else we ignore it and continue to check
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public LwM2mAttribute<?> next() {
-                        if (lastAttribute != null) {
-                            LwM2mAttribute<?> res = lastAttribute;
-                            lastAttribute = null;
-                            return res;
-                        } else {
-                            Attribute next = it.next();
-                            if (next instanceof LwM2mAttribute) {
-                                return (LwM2mAttribute<?>) next;
-                            } else {
-                                return this.next();
-                            }
-                        }
-                    }
-
-                    @Override
-                    public void remove() {
-                        it.remove();
-                    }
-                };
-            }
-        };
     }
 
     public void validate() throws InvalidAttributesException {
@@ -117,21 +113,21 @@ public class MixedLwM2mAttributeSet extends AttributeSet {
 
         // "lt" value < "gt" value MUST BE TRUE
         // https://www.openmobilealliance.org/release/LightweightM2M/V1_2_1-20221209-A/HTML-Version/OMA-TS-LightweightM2M_Core-V1_2_1-20221209-A.html#7-3-0-73-Attributes
-        LwM2mAttribute<Double> lt = this.getLwM2mAttribute(LwM2mAttributes.LESSER_THAN);
-        LwM2mAttribute<Double> gt = this.getLwM2mAttribute(LwM2mAttributes.GREATER_THAN);
+        LwM2mAttribute<BigDecimal> lt = this.getLwM2mAttribute(LwM2mAttributes.LESSER_THAN);
+        LwM2mAttribute<BigDecimal> gt = this.getLwM2mAttribute(LwM2mAttributes.GREATER_THAN);
         if ((lt != null) && (gt != null) //
                 && lt.hasValue() && gt.hasValue() //
-                && !(lt.getValue() < gt.getValue())) {
+                && !(lt.getValue().compareTo(gt.getValue()) < 0)) {
+            // && !(lt.getValue() < gt.getValue())) {
             throw new InvalidAttributesException("Attributes doesn't fulfill '%s'< '%s' condition", lt.getName(),
                     gt.getName());
         }
 
         // ("lt" value + 2*"st" values) <"gt" value MUST BE TRUE
         // https://www.openmobilealliance.org/release/LightweightM2M/V1_2_1-20221209-A/HTML-Version/OMA-TS-LightweightM2M_Core-V1_2_1-20221209-A.html#7-3-0-73-Attributes
-        LwM2mAttribute<Double> st = this.getLwM2mAttribute(LwM2mAttributes.STEP);
-        if ((lt != null) && (gt != null) && (st != null) ///
-                && lt.hasValue() && gt.hasValue() && st.hasValue() //
-                && !(lt.getValue() + 2 * st.getValue() < gt.getValue())) {
+        LwM2mAttribute<BigDecimal> st = this.getLwM2mAttribute(LwM2mAttributes.STEP);
+        if ((lt != null) && (gt != null) && (st != null) && lt.hasValue() && gt.hasValue() && st.hasValue() //
+                && !(lt.getValue().add(st.getValue().multiply(new BigDecimal(2))).compareTo(gt.getValue()) < 0)) {
             throw new InvalidAttributesException(
                     "Attributes doesn't fulfill  (\"lt\" value + 2*\"st\" values) <\"gt\") condition");
         }
@@ -169,8 +165,6 @@ public class MixedLwM2mAttributeSet extends AttributeSet {
             for (LwM2mAttribute<?> attr : attributes.getLwM2mAttributes()) {
                 if (attr.hasValue()) {
                     merged.put(attr.getName(), attr);
-                } else {
-                    merged.remove(attr.getName());
                 }
             }
         }
@@ -238,12 +232,12 @@ public class MixedLwM2mAttributeSet extends AttributeSet {
     @SuppressWarnings("unchecked")
     public <T> LwM2mAttribute<T> getLwM2mAttribute(LwM2mAttributeModel<T> model) {
         Attribute attribute = get(model.getName());
-        if (attribute instanceof LwM2mAttribute) {
-            if (((LwM2mAttribute<?>) attribute).getModel().equals(model)) {
-                return (LwM2mAttribute<T>) attribute;
-            }
+        if ((attribute instanceof LwM2mAttribute) //
+                && (((LwM2mAttribute<?>) attribute).getModel().equals(model))) {
+            return (LwM2mAttribute<T>) attribute;
         }
         return null;
+
     }
 
     public String[] toQueryParams() {
@@ -252,9 +246,9 @@ public class MixedLwM2mAttributeSet extends AttributeSet {
             if (attr instanceof LwM2mAttribute<?>) {
                 queries.add(((LwM2mAttribute<?>) attr).toQueryParamFormat());
             } else {
-                throw new IllegalStateException(String.format(
-                        "only LwM2mAttribute %s can be converted to query parameters, attribute %s is a %s",
-                        attr.getName(), attr.getClass().getSimpleName()));
+                throw new IllegalStateException(
+                        String.format("only LwM2mAttribute can be converted to query parameters, attribute %s is a %s",
+                                attr.getName(), attr.getClass().getSimpleName()));
             }
         }
         return queries.toArray(new String[queries.size()]);

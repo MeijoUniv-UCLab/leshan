@@ -29,6 +29,8 @@ import org.eclipse.leshan.client.bootstrap.BootstrapConsistencyChecker;
 import org.eclipse.leshan.client.bootstrap.DefaultBootstrapConsistencyChecker;
 import org.eclipse.leshan.client.endpoint.DefaultCompositeClientEndpointsProvider;
 import org.eclipse.leshan.client.endpoint.LwM2mClientEndpointsProvider;
+import org.eclipse.leshan.client.engine.ClientEndpointNameProvider;
+import org.eclipse.leshan.client.engine.DefaultClientEndpointNameProvider;
 import org.eclipse.leshan.client.engine.DefaultRegistrationEngineFactory;
 import org.eclipse.leshan.client.engine.RegistrationEngine;
 import org.eclipse.leshan.client.engine.RegistrationEngineFactory;
@@ -41,6 +43,8 @@ import org.eclipse.leshan.client.send.DataSender;
 import org.eclipse.leshan.client.util.LinkFormatHelper;
 import org.eclipse.leshan.core.LwM2m.LwM2mVersion;
 import org.eclipse.leshan.core.LwM2mId;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.DefaultLinkSerializer;
 import org.eclipse.leshan.core.link.LinkSerializer;
@@ -62,7 +66,7 @@ import org.eclipse.leshan.core.util.Validate;
  */
 public class LeshanClientBuilder {
 
-    private final String endpoint;
+    private final ClientEndpointNameProvider endpointNameProvider;
 
     private List<? extends LwM2mObjectEnabler> objectEnablers;
     private List<DataSender> dataSenders;
@@ -86,6 +90,8 @@ public class LeshanClientBuilder {
 
     private LinkFormatHelper linkFormatHelper;
 
+    private EndPointUriHandler uriHandler;
+
     /**
      * Creates a new instance for setting the configuration options for a {@link LeshanClient} instance.
      *
@@ -106,7 +112,30 @@ public class LeshanClientBuilder {
      */
     public LeshanClientBuilder(String endpoint) {
         Validate.notEmpty(endpoint);
-        this.endpoint = endpoint;
+        this.endpointNameProvider = new DefaultClientEndpointNameProvider(endpoint);
+    }
+
+    /**
+     * Creates a new instance for setting the configuration options for a {@link LeshanClient} instance.
+     *
+     * The builder is initialized with the following default values:
+     * <ul>
+     * <li><em>local address</em>: a local address and an ephemeral port (picked up during binding)</li>
+     * <li><em>object enablers</em>:
+     * <ul>
+     * <li>Security(0) with one instance (DM server security): uri=<em>coap://leshan.eclipseprojects.io:5683</em>,
+     * mode=NoSec</li>
+     * <li>Server(1) with one instance (DM server): id=12345, lifetime=5minutes</li>
+     * <li>Device(3): manufacturer=Eclipse Leshan, modelNumber=model12345, serialNumber=12345</li>
+     * </ul>
+     * </li>
+     * </ul>
+     *
+     * @param endpointNameProvider The endpoint name provider for this client.
+     */
+    public LeshanClientBuilder(ClientEndpointNameProvider endpointNameProvider) {
+        Validate.notNull(endpointNameProvider);
+        this.endpointNameProvider = endpointNameProvider;
     }
 
     /**
@@ -190,6 +219,16 @@ public class LeshanClientBuilder {
      */
     public LeshanClientBuilder setAttributeParser(LwM2mAttributeParser attributeParser) {
         this.attributeParser = attributeParser;
+        return this;
+    }
+
+    /**
+     * Set the Uri Handler {@link EndPointUriHandler}
+     * <p>
+     * By default the {@link DefaultEndPointUriHandler} is used.
+     */
+    public LeshanClientBuilder setEndpointUriHandler(EndPointUriHandler uriHandler) {
+        this.uriHandler = uriHandler;
         return this;
     }
 
@@ -305,7 +344,7 @@ public class LeshanClientBuilder {
 
             initializer.setInstancesForObject(LwM2mId.SECURITY, Security.noSec(defaultServerUri, 12345));
             initializer.setInstancesForObject(LwM2mId.SERVER,
-                    new Server(12345, 5 * 60, EnumSet.of(serverBindingMode), false, serverBindingMode));
+                    new Server(12345, 5l * 60, EnumSet.of(serverBindingMode), false, serverBindingMode));
             initializer.setInstancesForObject(LwM2mId.DEVICE,
                     new Device("Eclipse Leshan", "model12345", "12345", EnumSet.of(serverBindingMode)));
             objectEnablers = initializer.createAll();
@@ -328,10 +367,13 @@ public class LeshanClientBuilder {
         if (bootstrapConsistencyChecker == null) {
             bootstrapConsistencyChecker = new DefaultBootstrapConsistencyChecker();
         }
+        if (uriHandler == null) {
+            uriHandler = new DefaultEndPointUriHandler();
+        }
 
-        return createLeshanClient(endpoint, objectEnablers, dataSenders, this.trustStore, engineFactory,
+        return createLeshanClient(endpointNameProvider, objectEnablers, dataSenders, this.trustStore, engineFactory,
                 bootstrapConsistencyChecker, additionalAttributes, bsAdditionalAttributes, encoder, decoder, executor,
-                linkSerializer, linkFormatHelper, attributeParser, endpointsProvider);
+                linkSerializer, linkFormatHelper, attributeParser, uriHandler, endpointsProvider);
     }
 
     /**
@@ -342,7 +384,7 @@ public class LeshanClientBuilder {
      * <p>
      * See all the setters of this builder for more documentation about parameters.
      *
-     * @param endpoint The endpoint name for this client.
+     * @param endpointNameProvider The endpoint name provider for this client.
      * @param objectEnablers The list of object enablers. An enabler adds to support for a given LWM2M object to the
      *        client.
      * @param trustStore The optional trust store for verifying X.509 server certificates.
@@ -359,14 +401,15 @@ public class LeshanClientBuilder {
      *
      * @return the new {@link LeshanClient}
      */
-    protected LeshanClient createLeshanClient(String endpoint, List<? extends LwM2mObjectEnabler> objectEnablers,
-            List<DataSender> dataSenders, List<Certificate> trustStore, RegistrationEngineFactory engineFactory,
-            BootstrapConsistencyChecker checker, Map<String, String> additionalAttributes,
-            Map<String, String> bsAdditionalAttributes, LwM2mEncoder encoder, LwM2mDecoder decoder,
-            ScheduledExecutorService sharedExecutor, LinkSerializer linkSerializer, LinkFormatHelper linkFormatHelper,
-            LwM2mAttributeParser attributeParser, LwM2mClientEndpointsProvider endpointsProvider) {
-        return new LeshanClient(endpoint, objectEnablers, dataSenders, trustStore, engineFactory, checker,
+    protected LeshanClient createLeshanClient(ClientEndpointNameProvider endpointNameProvider,
+            List<? extends LwM2mObjectEnabler> objectEnablers, List<DataSender> dataSenders,
+            List<Certificate> trustStore, RegistrationEngineFactory engineFactory, BootstrapConsistencyChecker checker,
+            Map<String, String> additionalAttributes, Map<String, String> bsAdditionalAttributes, LwM2mEncoder encoder,
+            LwM2mDecoder decoder, ScheduledExecutorService sharedExecutor, LinkSerializer linkSerializer,
+            LinkFormatHelper linkFormatHelper, LwM2mAttributeParser attributeParser, EndPointUriHandler uriHandler,
+            LwM2mClientEndpointsProvider endpointsProvider) {
+        return new LeshanClient(endpointNameProvider, objectEnablers, dataSenders, trustStore, engineFactory, checker,
                 additionalAttributes, bsAdditionalAttributes, encoder, decoder, sharedExecutor, linkSerializer,
-                linkFormatHelper, attributeParser, endpointsProvider);
+                linkFormatHelper, attributeParser, uriHandler, endpointsProvider);
     }
 }

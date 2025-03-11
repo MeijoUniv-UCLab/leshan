@@ -25,6 +25,7 @@ import org.eclipse.californium.core.coap.CoAP.Type;
 import org.eclipse.californium.core.coap.Request;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 import org.eclipse.leshan.bsserver.request.BootstrapUplinkRequestReceiver;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.peer.IpPeer;
 import org.eclipse.leshan.core.request.BootstrapRequest;
 import org.eclipse.leshan.core.request.ContentFormat;
@@ -41,14 +42,17 @@ import org.slf4j.LoggerFactory;
 public class BootstrapResource extends LwM2mCoapResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(BootstrapResource.class);
-    private static final String QUERY_PARAM_ENDPOINT = "ep=";
-    private static final String QUERY_PARAM_PREFERRED_CONTENT_FORMAT = "pct=";
+    private static final String QUERY_PARAM_ENDPOINT = "ep";
+    private static final String QUERY_PARAM_PREFERRED_CONTENT_FORMAT = "pct";
 
     private final BootstrapUplinkRequestReceiver receiver;
+    private final EndPointUriHandler uriHandler;
 
-    public BootstrapResource(BootstrapUplinkRequestReceiver receiver, IdentityHandlerProvider identityHandlerProvider) {
+    public BootstrapResource(BootstrapUplinkRequestReceiver receiver, IdentityHandlerProvider identityHandlerProvider,
+            EndPointUriHandler uriHandler) {
         super("bs", identityHandlerProvider);
         this.receiver = receiver;
+        this.uriHandler = uriHandler;
     }
 
     @Override
@@ -67,18 +71,30 @@ public class BootstrapResource extends LwM2mCoapResource {
         String endpoint = null;
         ContentFormat preferredContentFomart = null;
         Map<String, String> additionalParams = new HashMap<>();
-        for (String param : request.getOptions().getUriQuery()) {
-            if (param.startsWith(QUERY_PARAM_ENDPOINT)) {
-                endpoint = param.substring(QUERY_PARAM_ENDPOINT.length());
-            } else if (param.startsWith(QUERY_PARAM_PREFERRED_CONTENT_FORMAT)) {
-                try {
-                    preferredContentFomart = ContentFormat
-                            .fromCode(param.substring(QUERY_PARAM_PREFERRED_CONTENT_FORMAT.length()));
-                } catch (NumberFormatException e) {
-                    handleInvalidRequest(exchange.advanced(),
-                            "Invalid preferre content format (pct) query param : must be a number", e);
-                    return;
+        // TODO maybe we should use LwM2mAttributeParser ?
+        for (String param : request.getOptions().getUriQueryStrings()) {
+            String[] p = param.split("=", 2);
+            String paramName = p[0];
+            if (paramName.equals(QUERY_PARAM_ENDPOINT)) {
+                if (p.length == 2) {
+                    endpoint = p[1];
+                } else {
+                    endpoint = "";
                 }
+            } else if (paramName.equals(QUERY_PARAM_PREFERRED_CONTENT_FORMAT)) {
+                if (p.length == 2) {
+                    try {
+                        preferredContentFomart = ContentFormat.fromCode(p[1]);
+                    } catch (NumberFormatException e) {
+                        handleInvalidRequest(exchange.advanced(),
+                                "Invalid preferre content format (pct) query param : must be a number", e);
+                        return;
+                    }
+                } else {
+                    handleInvalidRequest(exchange.advanced(), "preferred content format (pct) param can not be empty",
+                            null);
+                }
+
             } else {
                 String[] tokens = param.split("\\=");
                 if (tokens != null && tokens.length == 2) {
@@ -94,7 +110,7 @@ public class BootstrapResource extends LwM2mCoapResource {
         Request coapRequest = exchange.advanced().getRequest();
         SendableResponse<BootstrapResponse> sendableResponse = receiver.requestReceived(clientIdentity,
                 new BootstrapRequest(endpoint, preferredContentFomart, additionalParams, coapRequest),
-                exchange.advanced().getEndpoint().getUri());
+                uriHandler.createUri(exchange.advanced().getEndpoint().getUri()));
         BootstrapResponse response = sendableResponse.getResponse();
         if (response.isSuccess()) {
             exchange.respond(toCoapResponseCode(response.getCode()));

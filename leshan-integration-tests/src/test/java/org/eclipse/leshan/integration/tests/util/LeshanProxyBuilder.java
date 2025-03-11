@@ -15,16 +15,21 @@
  *******************************************************************************/
 package org.eclipse.leshan.integration.tests.util;
 
+import static org.eclipse.leshan.core.util.TestToolBox.uriHandler;
+
 import java.net.InetSocketAddress;
-import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.leshan.core.endpoint.Protocol;
 
 public class LeshanProxyBuilder {
 
     public static ReverseProxy givenReverseProxyFor(LeshanTestServer server, Protocol protocol) {
-        URI serverEndpointUri = server.getEndpoint(protocol).getURI();
-        return new ReverseProxy(new InetSocketAddress("localhost", 0),
-                new InetSocketAddress(serverEndpointUri.getHost(), serverEndpointUri.getPort()));
+        List<InetSocketAddress> endpoints = server.getEndpoints().stream() //
+                .map(e -> uriHandler.getSocketAddr(e.getURI())) //
+                .collect(Collectors.toList());
+
+        return new ReverseProxy(new InetSocketAddress("localhost", 0), endpoints);
     }
 }

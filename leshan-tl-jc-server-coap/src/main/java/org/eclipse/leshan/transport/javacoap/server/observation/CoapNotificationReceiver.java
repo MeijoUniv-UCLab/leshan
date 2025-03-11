@@ -35,6 +35,7 @@ import org.eclipse.leshan.core.request.exception.InvalidResponseException;
 import org.eclipse.leshan.core.response.AbstractLwM2mResponse;
 import org.eclipse.leshan.core.response.ObserveCompositeResponse;
 import org.eclipse.leshan.core.response.ObserveResponse;
+import org.eclipse.leshan.server.endpoint.EffectiveEndpointUriProvider;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
 import org.eclipse.leshan.server.observation.LwM2mNotificationReceiver;
 import org.eclipse.leshan.server.profile.ClientProfile;
@@ -55,15 +56,18 @@ public class CoapNotificationReceiver implements NotificationsReceiver {
     private final RegistrationStore registrationStore;
     private final LwM2mModelProvider modelProvider;
     private final LwM2mDecoder decoder;
+    private final EffectiveEndpointUriProvider endpointUriProvider;
 
     public CoapNotificationReceiver(CoapServer coapServer, LwM2mNotificationReceiver notificationReceiver,
-            RegistrationStore registrationStore, LwM2mModelProvider modelProvider, LwM2mDecoder decoder) {
+            RegistrationStore registrationStore, LwM2mModelProvider modelProvider, LwM2mDecoder decoder,
+            EffectiveEndpointUriProvider endpointUriProvider) {
         super();
         this.coapServer = coapServer;
         this.notificationReceiver = notificationReceiver;
         this.registrationStore = registrationStore;
         this.modelProvider = modelProvider;
         this.decoder = decoder;
+        this.endpointUriProvider = endpointUriProvider;
     }
 
     @Override
@@ -73,7 +77,8 @@ public class CoapNotificationReceiver implements NotificationsReceiver {
         IpPeer sender = new IpPeer(peerAddress);
 
         // Search if there is an observation for this resource.
-        ObservationIdentifier observationId = new ObservationIdentifier(coapResponse.getToken().getBytes());
+        ObservationIdentifier observationId = new ObservationIdentifier(endpointUriProvider.getEndpointUri(),
+                coapResponse.getToken().getBytes());
         final Observation observation = registrationStore.getObservation(observationId);
         if (observation == null)
             return false;
@@ -150,8 +155,8 @@ public class CoapNotificationReceiver implements NotificationsReceiver {
 
             ContentFormat contentFormat = ContentFormat.fromCode(coapResponse.options().getContentFormat());
             List<TimestampedLwM2mNode> timestampedNodes = decoder.decodeTimestampedData(
-                    coapResponse.getPayload().getBytes(), contentFormat, singleObservation.getPath(),
-                    profile.getModel());
+                    coapResponse.getPayload().getBytes(), contentFormat, profile.getRootPath(),
+                    singleObservation.getPath(), profile.getModel());
 
             // create lwm2m response
             if (timestampedNodes.size() == 1 && !timestampedNodes.get(0).isTimestamped()) {
@@ -166,17 +171,17 @@ public class CoapNotificationReceiver implements NotificationsReceiver {
 
             ContentFormat contentFormat = ContentFormat.fromCode(coapResponse.options().getContentFormat());
             TimestampedLwM2mNodes timestampedNodes = decoder.decodeTimestampedNodes(
-                    coapResponse.getPayload().getBytes(), contentFormat, compositeObservation.getPaths(),
-                    profile.getModel());
+                    coapResponse.getPayload().getBytes(), contentFormat, profile.getRootPath(),
+                    compositeObservation.getPaths(), profile.getModel());
 
             if (timestampedNodes.getTimestamps().size() == 1
                     && timestampedNodes.getTimestamps().iterator().next() == null) {
 
-                return new ObserveCompositeResponse(responseCode, timestampedNodes.getNodes(), null,
+                return new ObserveCompositeResponse(responseCode, timestampedNodes.getMostRecentNodes(), null, null,
                         compositeObservation, null, coapResponse);
             } else {
-                return new ObserveCompositeResponse(responseCode, null, timestampedNodes, compositeObservation, null,
-                        coapResponse);
+                return new ObserveCompositeResponse(responseCode, null, null, timestampedNodes, compositeObservation,
+                        null, coapResponse);
             }
         }
         return null;

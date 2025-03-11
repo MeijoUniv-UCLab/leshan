@@ -15,62 +15,60 @@
  *******************************************************************************/
 package org.eclipse.leshan.core.node;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
 public class LwM2mPathTest {
 
-    @Test
-    public void test_compare_path() {
-        assertEquals("/", "/");
-        assertEquals("/1", "/1");
-        assertEquals("/1/2", "/1/2");
-        assertEquals("/1/2/3", "/1/2/3");
-        assertEquals("/1/2/3/4", "/1/2/3/4");
+    public static List<String> ordererPaths = Arrays.asList( //
+            "/", //
+            "/1", //
+            "/1/1", //
+            "/1/1/1", //
+            "/1/1/1/1", //
+            "/2", //
+            "/2/1", //
+            "/2/1/1", //
+            "/2/1/1/1" //
+    );
 
-        assertFirstSmaller("/", "/1");
-        assertFirstSmaller("/", "/1/1");
-        assertFirstSmaller("/", "/1/1/1");
-        assertFirstSmaller("/", "/1/1/1/1");
-
-        assertFirstSmaller("/1", "/1/1");
-        assertFirstSmaller("/1", "/1/1/1");
-        assertFirstSmaller("/1", "/1/1/1/1");
-
-        assertFirstSmaller("/1/1", "/1/1/1");
-        assertFirstSmaller("/1/1", "/1/1/1/1");
-
-        assertFirstSmaller("/1/1/1", "/1/1/1/1");
-
-        assertFirstSmaller("/1", "/2");
-        assertFirstSmaller("/1/1", "/2");
-        assertFirstSmaller("/1/1/1", "/2");
-        assertFirstSmaller("/1/1/1/1", "/2");
-
-        assertFirstSmaller("/1", "/2/1");
-        assertFirstSmaller("/1/1", "/2/1");
-        assertFirstSmaller("/1/1/1", "/2/1");
-        assertFirstSmaller("/1/1/1/1", "/2/1");
-
-        assertFirstSmaller("/1", "/2/1/1");
-        assertFirstSmaller("/1/1", "/2/1/1");
-        assertFirstSmaller("/1/1/1", "/2/1/1");
-        assertFirstSmaller("/1/1/1/1", "/2/1/1");
-
-        assertFirstSmaller("/1", "/2/1/1/1");
-        assertFirstSmaller("/1/1", "/2/1/1/1");
-        assertFirstSmaller("/1/1/1", "/2/1/1/1");
-        assertFirstSmaller("/1/1/1/1", "/2/1/1/1");
+    static Stream<org.junit.jupiter.params.provider.Arguments> equalsTestArguements() {
+        return ordererPaths.stream().map(p -> arguments(p));
     }
 
-    private void assertEquals(String path1, String path2) {
-        assertTrue(new LwM2mPath(path1).compareTo(new LwM2mPath(path2)) == 0);
+    static Stream<Arguments> smallerTestArguments() {
+        List<Arguments> argumentList = new ArrayList<>();
+        for (int i = 0; i < ordererPaths.size() - 1; i++) {
+            for (int j = i + 1; j < ordererPaths.size(); j++) {
+                argumentList.add(arguments(ordererPaths.get(i), ordererPaths.get(j)));
+            }
+        }
+        return argumentList.stream();
     }
 
-    private void assertFirstSmaller(String path1, String path2) {
+    @ParameterizedTest(name = "[{0}] equals to [{0}]")
+    @MethodSource("equalsTestArguements")
+    public void test_equals(String path) {
+        assertTrue(new LwM2mPath(path).compareTo(new LwM2mPath(path)) == 0);
+        assertEquals(new LwM2mPath(path), new LwM2mPath(path));
+    }
+
+    @ParameterizedTest(name = "[{0}] smaller than [{1}]")
+    @MethodSource("smallerTestArguments")
+    public void assertFirstSmaller(String path1, String path2) {
         assertTrue(new LwM2mPath(path1).compareTo(new LwM2mPath(path2)) == -1);
         assertTrue(new LwM2mPath(path2).compareTo(new LwM2mPath(path1)) == 1);
 
@@ -78,9 +76,6 @@ public class LwM2mPathTest {
 
     @Test
     public void assertEqualsHashcode() {
-        // TODO we should not use EqualsVerifier.simple()
-        // But implement a right hashcode/equals way
-        // see : https://github.com/eclipse-leshan/leshan/issues/1504
-        EqualsVerifier.simple().forClass(LwM2mPath.class).verify();
+        EqualsVerifier.forClass(LwM2mPath.class).withRedefinedSubclass(LwM2mIncompletePath.class).verify();
     }
 }

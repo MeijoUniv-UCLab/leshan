@@ -28,7 +28,7 @@ Contributors:
   </parent>
   <artifactId>leshan-lwm2m-core</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-core</name>
+  <name>Leshan core</name>
   <description>Core classes for implementing Lightweight M2M</description>
 
   <dependencies>
@@ -48,12 +48,7 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

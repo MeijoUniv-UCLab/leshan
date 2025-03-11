@@ -18,7 +18,6 @@ package org.eclipse.leshan.transport.californium.bsserver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 
 import org.eclipse.leshan.bsserver.BootstrapConfig;
 import org.eclipse.leshan.bsserver.BootstrapConfigStore;
@@ -31,11 +30,13 @@ import org.eclipse.leshan.bsserver.DefaultBootstrapHandler;
 import org.eclipse.leshan.bsserver.LeshanBootstrapServer;
 import org.eclipse.leshan.bsserver.LeshanBootstrapServerBuilder;
 import org.eclipse.leshan.bsserver.request.BootstrapDownlinkRequestSender;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.peer.IpPeer;
 import org.eclipse.leshan.core.request.BootstrapRequest;
 import org.eclipse.leshan.core.response.BootstrapResponse;
 import org.eclipse.leshan.core.response.SendableResponse;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.transport.californium.bsserver.endpoint.CaliforniumBootstrapServerEndpointsProvider;
 import org.junit.jupiter.api.Test;
 
@@ -49,8 +50,9 @@ public class LeshanBootstrapServerTest {
 
             @Override
             public BootstrapHandler create(BootstrapDownlinkRequestSender sender,
-                    BootstrapSessionManager sessionManager, BootstrapSessionListener listener) {
-                bsHandler = new DefaultBootstrapHandler(sender, sessionManager, listener);
+                    BootstrapSessionManager sessionManager, ServerEndpointNameProvider endpointNameProvider,
+                    BootstrapSessionListener listener) {
+                bsHandler = new DefaultBootstrapHandler(sender, sessionManager, endpointNameProvider, listener);
                 return bsHandler;
             }
         });
@@ -117,7 +119,7 @@ public class LeshanBootstrapServerTest {
         assertEquals(numberOfThreadbefore, Thread.activeCount(), "All news created threads must be destroyed");
     }
 
-    private void forceThreadsCreation(URI endpointURI) {
+    private void forceThreadsCreation(EndpointUri endpointURI) {
         SendableResponse<BootstrapResponse> bootstrap = bsHandler.bootstrap(new IpPeer(new InetSocketAddress(5683)),
                 new BootstrapRequest("test"), endpointURI);
         bootstrap.sent();

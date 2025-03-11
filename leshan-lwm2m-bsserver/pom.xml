@@ -27,7 +27,7 @@ Contributors:
   </parent>
   <artifactId>leshan-lwm2m-bsserver</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-bsserver</name>
+  <name>Leshan bs server</name>
   <description>A LWM2M bootstrap server implementation which abstracts transport layer. A transport implementation like "leshan-tl-cf-bsserver-coap" is needed.</description>
 
   <dependencies>
@@ -43,18 +43,23 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-params</artifactId>
-      <scope>test</scope>
+      <groupId>org.eclipse.leshan</groupId>
+      <artifactId>leshan-lwm2m-core</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>nl.jqno.equalsverifier</groupId>
+      <artifactId>equalsverifier</artifactId>
     </dependency>
   </dependencies>
 </project>

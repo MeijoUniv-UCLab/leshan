@@ -27,25 +27,26 @@ import java.util.List;
 import org.eclipse.californium.core.config.CoapConfig;
 import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.scandium.config.DtlsConfig;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.leshan.bsserver.EditableBootstrapConfigStore;
 import org.eclipse.leshan.bsserver.LeshanBootstrapServer;
 import org.eclipse.leshan.bsserver.LeshanBootstrapServerBuilder;
 import org.eclipse.leshan.bsserver.model.VersionedBootstrapModelProvider;
 import org.eclipse.leshan.bsserver.security.BootstrapSecurityStoreAdapter;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.model.ObjectLoader;
 import org.eclipse.leshan.core.model.ObjectModel;
 import org.eclipse.leshan.demo.bsserver.cli.LeshanBsServerDemoCLI;
 import org.eclipse.leshan.demo.bsserver.servlet.BootstrapServlet;
 import org.eclipse.leshan.demo.bsserver.servlet.EventServlet;
-import org.eclipse.leshan.demo.bsserver.servlet.ServerServlet;
 import org.eclipse.leshan.demo.cli.ShortErrorMessageHandler;
 import org.eclipse.leshan.demo.servers.json.servlet.SecurityServlet;
+import org.eclipse.leshan.demo.servers.json.servlet.ServerServlet;
 import org.eclipse.leshan.servers.security.EditableSecurityStore;
 import org.eclipse.leshan.servers.security.FileSecurityStore;
 import org.eclipse.leshan.transport.californium.PrincipalMdcConnectionListener;
@@ -72,6 +73,8 @@ public class LeshanBootstrapServerDemo {
     private static final String CF_CONFIGURATION_FILENAME = "Californium3.bsserver.properties";
     private static final String CF_CONFIGURATION_HEADER = "Leshan Bootstrap Server Demo - "
             + Configuration.DEFAULT_HEADER;
+
+    private static final EndPointUriHandler uriHandler = new DefaultEndPointUriHandler();
 
     public static void main(String[] args) {
 
@@ -189,7 +192,7 @@ public class LeshanBootstrapServerDemo {
             endpointsBuilder.addEndpoint(coapAddr, Protocol.COAP);
         } else {
             endpointsBuilder.addEndpoint(new CoapOscoreBootstrapServerEndpointFactory(
-                    EndpointUriUtil.createUri(Protocol.COAP.getUriScheme(), coapAddr)));
+                    uriHandler.createUri(Protocol.COAP.getUriScheme(), coapAddr)));
         }
 
         // Create CoAP over DTLS endpoint
@@ -214,18 +217,17 @@ public class LeshanBootstrapServerDemo {
             jettyAddr = new InetSocketAddress(cli.main.webhost, cli.main.webPort);
         }
         Server server = new Server(jettyAddr);
-        ServletContextHandler root = new ServletContextHandler(null, "/", true, false);
+        ServletContextHandler root = new ServletContextHandler("/", true, false);
         server.setHandler(root);
 
         // Create static Servlet
         DefaultServlet staticServelt = new DefaultServlet();
         ServletHolder staticHolder = new ServletHolder(staticServelt);
-        staticHolder.setInitParameter("resourceBase",
+        staticHolder.setInitParameter("baseResource",
                 LeshanBootstrapServerDemo.class.getClassLoader().getResource("webapp").toExternalForm());
-        staticHolder.setInitParameter("pathInfoOnly", "true");
         staticHolder.setInitParameter("gzip", "true");
         staticHolder.setInitParameter("cacheControl", "public, max-age=31536000");
-        root.addServlet(staticHolder, "/*");
+        root.addServlet(staticHolder, "/");
 
         // Create REST API Servlets
         ServletHolder bsServletHolder = new ServletHolder(new BootstrapServlet(bsStore));
@@ -233,9 +235,11 @@ public class LeshanBootstrapServerDemo {
 
         ServletHolder serverServletHolder;
         if (cli.identity.isRPK()) {
-            serverServletHolder = new ServletHolder(new ServerServlet(bsServer, cli.identity.getPublicKey()));
+            serverServletHolder = new ServletHolder(
+                    new ServerServlet(bsServer.getEndpoints(), cli.identity.getPublicKey()));
         } else {
-            serverServletHolder = new ServletHolder(new ServerServlet(bsServer, cli.identity.getCertChain()[0]));
+            serverServletHolder = new ServletHolder(
+                    new ServerServlet(bsServer.getEndpoints(), cli.identity.getCertChain()[0]));
         }
         root.addServlet(serverServletHolder, "/api/server/*");
 

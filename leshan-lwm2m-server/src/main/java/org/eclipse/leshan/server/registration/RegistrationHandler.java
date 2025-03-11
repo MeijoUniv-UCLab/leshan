@@ -17,10 +17,10 @@
  *******************************************************************************/
 package org.eclipse.leshan.server.registration;
 
-import java.net.URI;
 import java.util.Date;
 
 import org.eclipse.leshan.core.LwM2m.LwM2mVersion;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.peer.LwM2mPeer;
 import org.eclipse.leshan.core.request.DeregisterRequest;
 import org.eclipse.leshan.core.request.RegisterRequest;
@@ -31,6 +31,7 @@ import org.eclipse.leshan.core.response.SendableResponse;
 import org.eclipse.leshan.core.response.UpdateResponse;
 import org.eclipse.leshan.server.registration.RegistrationDataExtractor.RegistrationData;
 import org.eclipse.leshan.server.security.Authorizer;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.Authorization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,27 +48,42 @@ public class RegistrationHandler {
     private final RegistrationIdProvider registrationIdProvider;
     private final Authorizer authorizer;
     private final RegistrationDataExtractor dataExtractor;
+    private final ServerEndpointNameProvider endpointNameProvider;
 
     public RegistrationHandler(RegistrationServiceImpl registrationService, Authorizer authorizer,
-            RegistrationIdProvider registrationIdProvider, RegistrationDataExtractor dataExtractor) {
+            RegistrationIdProvider registrationIdProvider, RegistrationDataExtractor dataExtractor,
+            ServerEndpointNameProvider endpointNameProvider) {
         this.registrationService = registrationService;
         this.authorizer = authorizer;
         this.registrationIdProvider = registrationIdProvider;
         this.dataExtractor = dataExtractor;
+        this.endpointNameProvider = endpointNameProvider;
     }
 
     public SendableResponse<RegisterResponse> register(LwM2mPeer sender, RegisterRequest registerRequest,
-            URI endpointUsed) {
+            EndpointUri endpointUsed) {
+
+        // Extract Endpoint Name
+        String endpointName = registerRequest.getEndpointName();
+        if (endpointName == null) {
+            // find endpoint name from identity
+            endpointName = endpointNameProvider.getEndpointName(sender.getIdentity());
+            if (endpointName == null) {
+                return new SendableResponse<>(RegisterResponse.forbidden("endpoint name missing"));
+            }
+        }
 
         // Extract data from object link
         LwM2mVersion lwM2mVersion = LwM2mVersion.get(registerRequest.getLwVersion());
         RegistrationData objLinksData = dataExtractor.extractDataFromObjectLinks(registerRequest.getObjectLinks(),
                 lwM2mVersion);
+        if (objLinksData == null) {
+            return new SendableResponse<>(RegisterResponse.preconditionFailed("unsupported lwm2m version"));
+        }
 
         // Create Registration from RegisterRequest
         Registration.Builder builder = new Registration.Builder(
-                registrationIdProvider.getRegistrationId(registerRequest), registerRequest.getEndpointName(), sender,
-                endpointUsed);
+                registrationIdProvider.getRegistrationId(registerRequest), endpointName, sender, endpointUsed);
 
         builder.lwM2mVersion(lwM2mVersion) //
                 .lifeTimeInSec(registerRequest.getLifetime()) //
@@ -85,7 +101,8 @@ public class RegistrationHandler {
         Registration registrationToApproved = builder.build();
 
         // We check if the client get authorization.
-        Authorization authorization = authorizer.isAuthorized(registerRequest, registrationToApproved, sender);
+        Authorization authorization = authorizer.isAuthorized(registerRequest, registrationToApproved, sender,
+                endpointUsed);
         if (authorization.isDeclined()) {
             return new SendableResponse<>(RegisterResponse.forbidden(null));
         }
@@ -121,7 +138,8 @@ public class RegistrationHandler {
         return new SendableResponse<>(RegisterResponse.success(approvedRegistration.getId()), whenSent);
     }
 
-    public SendableResponse<UpdateResponse> update(LwM2mPeer sender, UpdateRequest updateRequest) {
+    public SendableResponse<UpdateResponse> update(LwM2mPeer sender, UpdateRequest updateRequest,
+            EndpointUri endpointUsed) {
 
         // We check if there is a registration to update
         Registration currentRegistration = registrationService.getById(updateRequest.getRegistrationId());
@@ -130,7 +148,7 @@ public class RegistrationHandler {
         }
 
         // We check if the client get authorization.
-        Authorization authorization = authorizer.isAuthorized(updateRequest, currentRegistration, sender);
+        Authorization authorization = authorizer.isAuthorized(updateRequest, currentRegistration, sender, endpointUsed);
         if (authorization.isDeclined()) {
             return new SendableResponse<>(UpdateResponse.badRequest("forbidden"));
         }
@@ -170,7 +188,8 @@ public class RegistrationHandler {
         }
     }
 
-    public SendableResponse<DeregisterResponse> deregister(LwM2mPeer sender, DeregisterRequest deregisterRequest) {
+    public SendableResponse<DeregisterResponse> deregister(LwM2mPeer sender, DeregisterRequest deregisterRequest,
+            EndpointUri endpointUsed) {
 
         // We check if there is a registration to remove
         Registration currentRegistration = registrationService.getById(deregisterRequest.getRegistrationId());
@@ -179,7 +198,8 @@ public class RegistrationHandler {
         }
 
         // We check if the client get authorization.
-        Authorization authorization = authorizer.isAuthorized(deregisterRequest, currentRegistration, sender);
+        Authorization authorization = authorizer.isAuthorized(deregisterRequest, currentRegistration, sender,
+                endpointUsed);
         if (authorization.isDeclined()) {
             return new SendableResponse<>(DeregisterResponse.badRequest("forbidden"));
         }

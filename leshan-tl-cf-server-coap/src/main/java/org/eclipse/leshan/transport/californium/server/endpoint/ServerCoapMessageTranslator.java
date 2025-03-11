@@ -70,7 +70,8 @@ public class ServerCoapMessageTranslator {
             ServerEndpointToolbox toolbox) {
 
         LwM2mResponseBuilder<T> builder = new LwM2mResponseBuilder<T>(coapRequest, coapResponse,
-                clientProfile.getEndpoint(), clientProfile.getModel(), toolbox.getDecoder(), toolbox.getLinkParser());
+                clientProfile.getEndpoint(), clientProfile.getRootPath(), clientProfile.getModel(),
+                clientProfile.getRegistration().getEndpointUri(), toolbox.getDecoder(), toolbox.getLinkParser());
         lwm2mRequest.accept(builder);
         return builder.getResponse();
     }
@@ -78,9 +79,10 @@ public class ServerCoapMessageTranslator {
     public List<Resource> createResources(UplinkDeviceManagementRequestReceiver receiver, ServerEndpointToolbox toolbox,
             IdentityHandlerProvider identityHandlerProvider) {
         return Arrays.asList( //
-                (Resource) new RegisterResource(receiver, toolbox.getLinkParser(), identityHandlerProvider), //
+                (Resource) new RegisterResource(receiver, toolbox.getLinkParser(), identityHandlerProvider,
+                        toolbox.getUriHandler()), //
                 (Resource) new SendResource(receiver, toolbox.getDecoder(), toolbox.getProfileProvider(),
-                        identityHandlerProvider));
+                        identityHandlerProvider, toolbox.getUriHandler()));
     }
 
     public AbstractLwM2mResponse createObserveResponse(Observation observation, Response coapResponse,
@@ -104,7 +106,8 @@ public class ServerCoapMessageTranslator {
                             coapResponse);
                 } else {
                     List<TimestampedLwM2mNode> timestampedNodes = toolbox.getDecoder().decodeTimestampedData(
-                            coapResponse.getPayload(), contentFormat, singleObservation.getPath(), profile.getModel());
+                            coapResponse.getPayload(), contentFormat, profile.getRootPath(),
+                            singleObservation.getPath(), profile.getModel());
 
                     // create lwm2m response
                     if (timestampedNodes.size() == 1 && !timestampedNodes.get(0).isTimestamped()) {
@@ -120,21 +123,21 @@ public class ServerCoapMessageTranslator {
                 CompositeObservation compositeObservation = (CompositeObservation) observation;
 
                 if (responseCode.isError()) {
-                    return new ObserveCompositeResponse(responseCode, null, null, null, coapResponse.getPayloadString(),
-                            coapResponse);
+                    return new ObserveCompositeResponse(responseCode, null, null, null, null,
+                            coapResponse.getPayloadString(), coapResponse);
                 } else {
                     TimestampedLwM2mNodes timestampedNodes = toolbox.getDecoder().decodeTimestampedNodes(
-                            coapResponse.getPayload(), contentFormat, compositeObservation.getPaths(),
-                            profile.getModel());
+                            coapResponse.getPayload(), contentFormat, profile.getRootPath(),
+                            compositeObservation.getPaths(), profile.getModel());
 
                     if (timestampedNodes.getTimestamps().size() == 1
                             && timestampedNodes.getTimestamps().iterator().next() == null) {
 
-                        return new ObserveCompositeResponse(responseCode, timestampedNodes.getNodes(), null,
-                                compositeObservation, null, coapResponse);
+                        return new ObserveCompositeResponse(responseCode, timestampedNodes.getMostRecentNodes(), null,
+                                null, compositeObservation, null, coapResponse);
                     } else {
-                        return new ObserveCompositeResponse(responseCode, null, timestampedNodes, compositeObservation,
-                                null, coapResponse);
+                        return new ObserveCompositeResponse(responseCode, null, null, timestampedNodes,
+                                compositeObservation, null, coapResponse);
                     }
                 }
             }

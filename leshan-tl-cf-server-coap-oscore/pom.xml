@@ -27,7 +27,7 @@ Contributors:
   </parent>
   <artifactId>leshan-tl-cf-server-coap-oscore</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-transport-californium-server-coap oscore</name>
+  <name>Leshan transport Californium server coap oscore</name>
   <description>A transport implementation for leshan server based on Californium for CoAP protocol supporting OSCORE</description>
 
   <dependencies>
@@ -43,7 +43,7 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

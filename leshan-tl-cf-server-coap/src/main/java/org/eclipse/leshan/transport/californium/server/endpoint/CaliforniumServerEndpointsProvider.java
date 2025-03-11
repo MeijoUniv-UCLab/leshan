@@ -16,7 +16,6 @@
 package org.eclipse.leshan.transport.californium.server.endpoint;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,14 +28,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.eclipse.californium.core.CoapServer;
-import org.eclipse.californium.core.coap.Request;
-import org.eclipse.californium.core.coap.Response;
 import org.eclipse.californium.core.network.CoapEndpoint;
-import org.eclipse.californium.core.observe.NotificationListener;
 import org.eclipse.californium.core.server.resources.Resource;
 import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.elements.config.Configuration.ModuleDefinitionsProvider;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.observation.CompositeObservation;
 import org.eclipse.leshan.core.observation.Observation;
@@ -48,6 +46,7 @@ import org.eclipse.leshan.core.response.ObserveCompositeResponse;
 import org.eclipse.leshan.core.response.ObserveResponse;
 import org.eclipse.leshan.core.util.NamedThreadFactory;
 import org.eclipse.leshan.server.LeshanServer;
+import org.eclipse.leshan.server.endpoint.EffectiveEndpointUriProvider;
 import org.eclipse.leshan.server.endpoint.LwM2mServerEndpoint;
 import org.eclipse.leshan.server.endpoint.LwM2mServerEndpointsProvider;
 import org.eclipse.leshan.server.endpoint.ServerEndpointToolbox;
@@ -68,7 +67,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
 
     // TODO TL : provide a COAP/Californium API ? like previous LeshanServer.coapAPI()
 
-    private final Logger LOG = LoggerFactory.getLogger(CaliforniumServerEndpointsProvider.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CaliforniumServerEndpointsProvider.class);
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1,
             new NamedThreadFactory("Leshan Async Request timeout"));
@@ -86,7 +85,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
     protected CaliforniumServerEndpointsProvider(Builder builder) {
         this.serverConfig = builder.serverConfiguration;
         this.endpointsFactory = builder.endpointsFactory;
-        this.endpoints = new ArrayList<CaliforniumServerEndpoint>();
+        this.endpoints = new ArrayList<>();
     }
 
     public CoapServer getCoapServer() {
@@ -99,7 +98,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
     }
 
     @Override
-    public LwM2mServerEndpoint getEndpoint(URI uri) {
+    public LwM2mServerEndpoint getEndpoint(EndpointUri uri) {
         for (CaliforniumServerEndpoint endpoint : endpoints) {
             if (endpoint.getURI().equals(uri))
                 return endpoint;
@@ -111,7 +110,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
     public void createEndpoints(UplinkDeviceManagementRequestReceiver requestReceiver,
             LwM2mNotificationReceiver notificatonReceiver, ServerEndpointToolbox toolbox,
             ServerSecurityInfo serverSecurityInfo, LeshanServer server) {
-        // create server;
+        // create server
         coapServer = new CoapServer(serverConfig) {
             @Override
             protected Resource createRoot() {
@@ -124,9 +123,12 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
 
         // create endpoints
         for (CaliforniumServerEndpointFactory endpointFactory : endpointsFactory) {
+            //
+            EffectiveEndpointUriProvider uriProvider = new EffectiveEndpointUriProvider();
+
             // create Californium endpoint
             CoapEndpoint coapEndpoint = endpointFactory.createCoapEndpoint(serverConfig, serverSecurityInfo,
-                    notificatonReceiver, server);
+                    notificatonReceiver, server, uriProvider);
 
             if (coapEndpoint != null) {
 
@@ -134,51 +136,56 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
                 final IdentityHandler identityHandler = endpointFactory.createIdentityHandler();
                 identityHandlerProvider.addIdentityHandler(coapEndpoint, identityHandler);
 
-                // create exception translator;
+                // create exception translator
                 ExceptionTranslator exceptionTranslator = endpointFactory.createExceptionTranslator();
 
                 // create LWM2M endpoint
                 CaliforniumServerEndpoint lwm2mEndpoint = new CaliforniumServerEndpoint(endpointFactory.getProtocol(),
                         endpointFactory.getEndpointDescription(), coapEndpoint, messagetranslator, toolbox,
                         notificatonReceiver, identityHandler, exceptionTranslator, executor);
+                uriProvider.setEndpoint(lwm2mEndpoint);
                 endpoints.add(lwm2mEndpoint);
 
                 // add Californium endpoint to coap server
                 coapServer.addEndpoint(coapEndpoint);
 
                 // add NotificationListener
-                coapEndpoint.addNotificationListener(new NotificationListener() {
+                coapEndpoint.addNotificationListener((coapRequest, coapResponse) -> {
+                    // Get Observation
+                    String regid = coapRequest.getUserContext().get(ObserveUtil.CTX_REGID);
+                    Observation observation = server.getRegistrationStore().getObservation(regid,
+                            new ObservationIdentifier(lwm2mEndpoint.getURI(), coapResponse.getToken().getBytes()));
+                    if (observation == null) {
+                        LOG.warn("Unexpected error: Unable to find observation with token {} for registration {}",
+                                coapResponse.getToken(), regid);
+                        // We just log it because, this is probably caused by bad device behavior :
+                        // https://github.com/eclipse-leshan/leshan/issues/1634
+                        return;
+                    }
+                    // Get profile
+                    LwM2mPeer client = identityHandler.getIdentity(coapResponse);
+                    ClientProfile profile = toolbox.getProfileProvider().getProfile(client.getIdentity());
+                    if (profile == null) {
+                        LOG.warn("Unexpected error: Unable to find registration with id {} for observation {}", regid,
+                                coapResponse.getToken());
+                        // We just log it because, this is probably caused by bad device behavior :
+                        // https://github.com/eclipse-leshan/leshan/issues/1634
+                        return;
+                    }
 
-                    @Override
-                    public void onNotification(Request coapRequest, Response coapResponse) {
-                        // Get Observation
-                        String regid = coapRequest.getUserContext().get(ObserveUtil.CTX_REGID);
-                        Observation observation = server.getRegistrationStore().getObservation(regid,
-                                new ObservationIdentifier(coapResponse.getToken().getBytes()));
-                        if (observation == null) {
-                            LOG.error("Unexpected error: Unable to find observation with token {} for registration {}",
-                                    coapResponse.getToken(), regid);
-                            return;
+                    // create Observe Response
+                    try {
+                        AbstractLwM2mResponse response = messagetranslator.createObserveResponse(observation,
+                                coapResponse, toolbox, profile);
+                        if (observation instanceof SingleObservation) {
+                            notificatonReceiver.onNotification((SingleObservation) observation, client, profile,
+                                    (ObserveResponse) response);
+                        } else if (observation instanceof CompositeObservation) {
+                            notificatonReceiver.onNotification((CompositeObservation) observation, client, profile,
+                                    (ObserveCompositeResponse) response);
                         }
-                        // Get profile
-                        LwM2mPeer client = identityHandler.getIdentity(coapResponse);
-                        ClientProfile profile = toolbox.getProfileProvider().getProfile(client.getIdentity());
-
-                        // create Observe Response
-                        try {
-                            AbstractLwM2mResponse response = messagetranslator.createObserveResponse(observation,
-                                    coapResponse, toolbox, profile);
-                            if (observation instanceof SingleObservation) {
-                                notificatonReceiver.onNotification((SingleObservation) observation, client, profile,
-                                        (ObserveResponse) response);
-                            } else if (observation instanceof CompositeObservation) {
-                                notificatonReceiver.onNotification((CompositeObservation) observation, client, profile,
-                                        (ObserveCompositeResponse) response);
-                            }
-                        } catch (Exception e) {
-                            notificatonReceiver.onError(observation, client, profile, e);
-                        }
-
+                    } catch (Exception e) {
+                        notificatonReceiver.onError(observation, client, profile, e);
                     }
                 });
             }
@@ -208,6 +215,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
             executor.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             LOG.warn("Destroying RequestSender was interrupted.", e);
+            Thread.currentThread().interrupt();
         }
         coapServer.destroy();
     }
@@ -217,16 +225,21 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
         private final List<ServerProtocolProvider> protocolProviders;
         private Configuration serverConfiguration;
         private final List<CaliforniumServerEndpointFactory> endpointsFactory;
+        private final EndPointUriHandler uriHandler;
 
         public Builder(ServerProtocolProvider... protocolProviders) {
+            this(new DefaultEndPointUriHandler(), protocolProviders);
+        }
+
+        public Builder(EndPointUriHandler uriHandler, ServerProtocolProvider... protocolProviders) {
             // TODO TL : handle duplicate ?
-            this.protocolProviders = new ArrayList<ServerProtocolProvider>();
+            this.protocolProviders = new ArrayList<>();
             if (protocolProviders.length == 0) {
                 this.protocolProviders.add(new CoapServerProtocolProvider());
             } else {
                 this.protocolProviders.addAll(Arrays.asList(protocolProviders));
             }
-
+            this.uriHandler = uriHandler;
             this.endpointsFactory = new ArrayList<>();
         }
 
@@ -313,15 +326,15 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
         }
 
         public Builder addEndpoint(String uri) {
-            return addEndpoint(EndpointUriUtil.createUri(uri));
+            return addEndpoint(uriHandler.createUri(uri));
         }
 
-        public Builder addEndpoint(URI uri) {
+        public Builder addEndpoint(EndpointUri uri) {
             for (ServerProtocolProvider protocolProvider : protocolProviders) {
                 // TODO TL : validate URI
                 if (protocolProvider.getProtocol().getUriScheme().equals(uri.getScheme())) {
                     // TODO TL: handle duplicate addr
-                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(uri));
+                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(uri, uriHandler));
                 }
             }
             // TODO TL: handle missing provider for given protocol
@@ -329,7 +342,7 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
         }
 
         public Builder addEndpoint(InetSocketAddress addr, Protocol protocol) {
-            return addEndpoint(EndpointUriUtil.createUri(protocol.getUriScheme(), addr));
+            return addEndpoint(uriHandler.createUri(protocol.getUriScheme(), addr));
         }
 
         public Builder addEndpoint(CaliforniumServerEndpointFactory endpointFactory) {
@@ -346,8 +359,8 @@ public class CaliforniumServerEndpointsProvider implements LwM2mServerEndpointsP
             if (endpointsFactory.isEmpty()) {
                 for (ServerProtocolProvider protocolProvider : protocolProviders) {
                     // TODO TL : handle duplicates
-                    endpointsFactory.add(protocolProvider
-                            .createDefaultEndpointFactory(protocolProvider.getDefaultUri(serverConfiguration)));
+                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(
+                            protocolProvider.getDefaultUri(serverConfiguration, uriHandler), uriHandler));
                 }
             }
             return this;

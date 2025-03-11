@@ -24,6 +24,7 @@ import java.util.List;
 import org.eclipse.leshan.core.Destroyable;
 import org.eclipse.leshan.core.Startable;
 import org.eclipse.leshan.core.Stoppable;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.lwm2m.LwM2mLinkParser;
 import org.eclipse.leshan.core.node.codec.CodecException;
@@ -74,6 +75,7 @@ import org.eclipse.leshan.server.request.UplinkDeviceManagementRequestReceiver;
 import org.eclipse.leshan.server.security.Authorizer;
 import org.eclipse.leshan.server.send.SendHandler;
 import org.eclipse.leshan.server.send.SendService;
+import org.eclipse.leshan.servers.ServerEndpointNameProvider;
 import org.eclipse.leshan.servers.security.SecurityInfo;
 import org.eclipse.leshan.servers.security.SecurityStore;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
@@ -127,7 +129,8 @@ public class LeshanServer {
      * @param updateRegistrationOnNotification will activate registration update on observe notification.
      * @param updateRegistrationOnSend will activate registration update on Send Operation.
      * @param linkParser a parser {@link LwM2mLinkParser} used to parse a CoRE Link.
-     * @param serverSecurityInfo credentials of the Server
+     * @param serverSecurityInfo credentials of the Server.
+     * @param endpointNameProvider try to find endpoint name from client identity.
      * @since 1.1
      */
     public LeshanServer(LwM2mServerEndpointsProvider endpointsProvider, RegistrationStore registrationStore,
@@ -135,7 +138,8 @@ public class LeshanServer {
             LwM2mDecoder decoder, boolean noQueueMode, ClientAwakeTimeProvider awakeTimeProvider,
             RegistrationIdProvider registrationIdProvider, RegistrationDataExtractor registrationDataExtractor,
             boolean updateRegistrationOnNotification, boolean updateRegistrationOnSend, LwM2mLinkParser linkParser,
-            ServerSecurityInfo serverSecurityInfo) {
+            EndPointUriHandler uriHandler, ServerSecurityInfo serverSecurityInfo,
+            ServerEndpointNameProvider endpointNameProvider) {
 
         Validate.notNull(endpointsProvider, "endpointsProvider cannot be null");
         Validate.notNull(registrationStore, "registration store cannot be null");
@@ -152,20 +156,20 @@ public class LeshanServer {
         this.securityStore = securityStore;
         this.modelProvider = modelProvider;
         this.observationService = createObservationService(registrationStore, updateRegistrationOnNotification,
-                endpointsProvider);
+                endpointsProvider, authorizer);
         if (noQueueMode) {
             presenceService = null;
         } else {
             presenceService = createPresenceService(registrationService, awakeTimeProvider,
                     updateRegistrationOnNotification);
         }
-        this.sendService = createSendHandler(registrationStore, updateRegistrationOnSend);
+        this.sendService = createSendHandler(registrationStore, authorizer, updateRegistrationOnSend);
 
         // create endpoints
         ServerEndpointToolbox toolbox = new ServerEndpointToolbox(decoder, encoder, linkParser,
-                new DefaultClientProfileProvider(registrationStore, modelProvider));
+                new DefaultClientProfileProvider(registrationStore, modelProvider), uriHandler);
         RegistrationHandler registrationHandler = new RegistrationHandler(registrationService, authorizer,
-                registrationIdProvider, registrationDataExtractor);
+                registrationIdProvider, registrationDataExtractor, endpointNameProvider);
         UplinkDeviceManagementRequestReceiver requestReceiver = createRequestReceiver(registrationHandler, sendService);
         endpointsProvider.createEndpoints(requestReceiver, observationService, toolbox, serverSecurityInfo, this);
 
@@ -180,10 +184,11 @@ public class LeshanServer {
     }
 
     protected ObservationServiceImpl createObservationService(RegistrationStore registrationStore,
-            boolean updateRegistrationOnNotification, LwM2mServerEndpointsProvider endpointsProvider) {
+            boolean updateRegistrationOnNotification, LwM2mServerEndpointsProvider endpointsProvider,
+            Authorizer authorizer) {
 
         ObservationServiceImpl observationService = new ObservationServiceImpl(registrationStore, endpointsProvider,
-                updateRegistrationOnNotification);
+                updateRegistrationOnNotification, authorizer);
         return observationService;
     }
 
@@ -198,8 +203,9 @@ public class LeshanServer {
         return presenceService;
     }
 
-    protected SendHandler createSendHandler(RegistrationStore registrationStore, boolean updateRegistrationOnSend) {
-        return new SendHandler(registrationStore, updateRegistrationOnSend);
+    protected SendHandler createSendHandler(RegistrationStore registrationStore, Authorizer authorizer,
+            boolean updateRegistrationOnSend) {
+        return new SendHandler(registrationStore, authorizer, updateRegistrationOnSend);
     }
 
     protected UplinkDeviceManagementRequestReceiver createRequestReceiver(RegistrationHandler registrationHandler,

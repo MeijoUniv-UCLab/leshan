@@ -18,14 +18,14 @@ package org.eclipse.leshan.core.parser;
 import org.eclipse.leshan.core.util.Validate;
 
 /**
- * An String Parser Utility specially helpfull to parse to ABNF grammar defined at IETF.
+ * An String Parser Utility specially helpful to parse to ABNF grammar defined at IETF.
  */
 public abstract class StringParser<T extends Throwable> {
 
-    private String strToParse;
+    private final String strToParse;
     private int cursor;
 
-    public StringParser(String stringToParse) {
+    protected StringParser(String stringToParse) {
         Validate.notNull(stringToParse);
         strToParse = stringToParse;
         cursor = 0;
@@ -121,10 +121,38 @@ public abstract class StringParser<T extends Throwable> {
     }
 
     /**
+     * HEXDIG as defined at https://datatracker.ietf.org/doc/html/rfc2234#section-6.1 but case insensitive
+     *
+     * <pre>
+     * HEXDIG = DIGIT / "a" / "b" / "c" / "d" / "e" / "f" / "A" / "B" / "C" / "D" / "E" / "F"
+     * </pre>
+     *
+     *
+     *
+     * @return <code>true</code> if there is a next char and it is an HEXDIG
+     */
+    public boolean nextCharIsUPLOHEXDIG() {
+        return nextCharIsDIGIT() || nextCharIsBetween('A', 'F') || nextCharIsBetween('a', 'f');
+    }
+
+    /**
      * consume next char. User must check before if there is more char available with {@link #hasMoreChar()}
      */
     public void consumeNextChar() {
         cursor++;
+    }
+
+    /**
+     * Optionally consume next char if it is equals to <code>character</code> argument, if not just do nothing.
+     *
+     * @return <code>true</code> if the char is consumed
+     */
+    public boolean optionallyConsumeChar(char character) throws T {
+        if (hasMoreChar() && getNextChar() == character) {
+            consumeNextChar();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -212,6 +240,23 @@ public abstract class StringParser<T extends Throwable> {
     }
 
     /**
+     * Consume next char if it is ALPHA argument if not raise an exception.
+     *
+     * @see #nextCharIsALPHA()
+     */
+    public void consumeALPHA() throws T {
+        if (!hasMoreChar()) {
+            raiseException("Unable to parse [%s] : unexpected EOF, expected 'LOALPHA' character after %s", strToParse,
+                    getAlreadyParsedString());
+        }
+        if (!nextCharIsALPHA()) {
+            raiseException("Unable to parse [%s] : unexpected character '%s', expected 'ALPHA' after %s", strToParse,
+                    getNextChar(), getAlreadyParsedString());
+        }
+        consumeNextChar();
+    }
+
+    /**
      * Consume cardinal as described at https://datatracker.ietf.org/doc/html/rfc6690#section-2
      *
      * <pre>
@@ -234,6 +279,90 @@ public abstract class StringParser<T extends Throwable> {
             int end = getPosition();
             return substring(start, end);
         }
+    }
+
+    /**
+     * Consume cardinal as described at https://datatracker.ietf.org/doc/html/rfc6690#section-2
+     *
+     * <pre>
+     *  dec-octet   = DIGIT                 ; 0-9
+     *              / %x31-39 DIGIT         ; 10-99
+     *              / "1" 2DIGIT            ; 100-199
+     *              / "2" %x30-34 DIGIT     ; 200-249
+     *              / "25" %x30-35          ; 250-255
+     * </pre>
+     */
+    public String consumeDecOctet() throws T {
+        int start = getPosition();
+        if (nextCharIs('0')) {
+            // 0
+            consumeNextChar();
+        } else if (nextCharIsBetween('3', '9')) {
+            // 3-9
+            // 30-99
+            consumeNextChar();
+            if (nextCharIsDIGIT()) {
+                // 30-99
+                consumeNextChar();
+            }
+        } else if (nextCharIs('1')) {
+            // 1
+            // 10-19
+            // 100-199
+            consumeNextChar();
+            if (nextCharIsDIGIT()) {
+                // 10-19
+                consumeNextChar();
+                if (nextCharIsDIGIT()) {
+                    // 100-199
+                    consumeNextChar();
+                }
+            }
+        } else if (nextCharIs('2')) {
+            // case 2??
+            consumeNextChar();
+            if (nextCharIsBetween('0', '4')) {
+                // 20-24
+                // 200-249
+                consumeNextChar();
+                if (nextCharIsDIGIT()) {
+                    // 200-249
+                    consumeNextChar();
+                }
+            } else if (nextCharIs('5')) {
+                // 25
+                // 250-255
+                consumeNextChar();
+                if (nextCharIsBetween('0', '5')) {
+                    // 250-255
+                    consumeNextChar();
+                }
+            } else if (nextCharIsBetween('6', '9')) {
+                // case 26-29
+                consumeNextChar();
+            }
+        }
+        return substring(start, getPosition());
+    }
+
+    /**
+     * Cancel consumption of last char.
+     */
+    public void backtrackTo(int position) {
+        if (position < 0) {
+            throw new IllegalStateException("can not backtrack to negative position");
+        }
+        cursor = position;
+    }
+
+    /**
+     * Cancel consumption of last char.
+     */
+    public void backtrackLastChar() {
+        if (cursor == 0) {
+            throw new IllegalStateException("can not backtrack char, we already are at the start of the string");
+        }
+        cursor--;
     }
 
     /**
@@ -285,7 +414,7 @@ public abstract class StringParser<T extends Throwable> {
      */
     public void raiseException(String message, Object... args) throws T {
         raiseException(null, message, args);
-    };
+    }
 
     /**
      * @see String#format(String, Object...)
@@ -299,4 +428,5 @@ public abstract class StringParser<T extends Throwable> {
     }
 
     public abstract void raiseException(String message, Exception cause) throws T;
+
 }

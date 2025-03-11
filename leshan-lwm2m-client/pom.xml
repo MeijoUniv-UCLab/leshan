@@ -27,7 +27,7 @@ Contributors:
   </parent>
   <artifactId>leshan-lwm2m-client</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-client</name>
+  <name>Leshan client</name>
   <description>A LWM2M client implementation which abstracts transport layer. A transport implementation like "leshan-tl-cf-client-coap" is needed.</description>
 
   <dependencies>
@@ -44,8 +44,12 @@ Contributors:
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>nl.jqno.equalsverifier</groupId>
+      <artifactId>equalsverifier</artifactId>
     </dependency>
   </dependencies>
 </project>

@@ -26,7 +26,7 @@ Contributors:
   <artifactId>leshan-build-config</artifactId>
   <packaging>pom</packaging>
 
-  <name>leshan-shared build config</name>
+  <name>Leshan shared build config</name>
   <description>Shared Maven configuration for all Leshan modules</description>
 
   <properties>
@@ -40,8 +40,12 @@ Contributors:
           <artifactId>maven-compiler-plugin</artifactId>
           <configuration>
             <release>8</release>
-            <debug>true</debug>
+            <!--compilerArgument>-Xlint:all</compilerArgument-->
+            <!-- We need to skipe -removal warning because of https://saker.build/blog/java_target_older_releases/#how-does-it-work_ -->
+            <compilerArgument>-Xlint:-removal</compilerArgument>
+            <showWarnings>true</showWarnings>
             <showDeprecation>true</showDeprecation>
+            <failOnWarning>true</failOnWarning>
           </configuration>
         </plugin>
         <plugin>

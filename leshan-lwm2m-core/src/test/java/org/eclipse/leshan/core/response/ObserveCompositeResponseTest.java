@@ -18,10 +18,12 @@ package org.eclipse.leshan.core.response;
 import static org.eclipse.leshan.core.ResponseCode.CONTENT;
 import static org.eclipse.leshan.core.node.LwM2mSingleResource.newResource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.leshan.core.ResponseCode;
 import org.eclipse.leshan.core.node.LwM2mNode;
 import org.eclipse.leshan.core.node.LwM2mPath;
 import org.junit.jupiter.api.Test;
@@ -37,9 +39,16 @@ public class ObserveCompositeResponseTest {
 
         // when
         ObserveCompositeResponse response = new ObserveCompositeResponse(CONTENT, exampleContent, null, null, null,
-                null);
+                null, null);
 
         // then
         assertEquals(exampleContent, response.getContent());
+    }
+
+    @Test
+    public void create_failure_reponse() {
+        ObserveCompositeResponse response = ObserveCompositeResponse.notFound();
+        assertEquals(response.getCode(), ResponseCode.NOT_FOUND);
+        assertNull(response.getContent());
     }
 }

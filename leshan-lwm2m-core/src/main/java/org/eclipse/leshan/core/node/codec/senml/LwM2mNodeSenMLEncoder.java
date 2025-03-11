@@ -68,7 +68,8 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
     }
 
     @Override
-    public byte[] encode(LwM2mNode node, LwM2mPath path, LwM2mModel model, LwM2mValueConverter converter) {
+    public byte[] encode(LwM2mNode node, String rootPath, LwM2mPath path, LwM2mModel model,
+            LwM2mValueConverter converter) {
         Validate.notNull(node);
         Validate.notNull(path);
         Validate.notNull(model);
@@ -76,12 +77,12 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
         InternalEncoder internalEncoder = new InternalEncoder();
         internalEncoder.objectId = path.getObjectId();
         internalEncoder.model = model;
+        internalEncoder.rootPath = rootPath;
         internalEncoder.requestPath = path;
         internalEncoder.converter = converter;
         node.accept(internalEncoder);
 
-        SenMLPack pack = new SenMLPack();
-        pack.setRecords(internalEncoder.records);
+        SenMLPack pack = new SenMLPack(internalEncoder.records);
 
         try {
             return encoder.toSenML(pack);
@@ -91,8 +92,8 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
     }
 
     @Override
-    public byte[] encodeNodes(Map<LwM2mPath, LwM2mNode> nodes, LwM2mModel model, LwM2mValueConverter converter)
-            throws CodecException {
+    public byte[] encodeNodes(String rootPath, Map<LwM2mPath, LwM2mNode> nodes, LwM2mModel model,
+            LwM2mValueConverter converter) throws CodecException {
         // validate arguments
         Validate.notEmpty(nodes);
 
@@ -103,6 +104,7 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
             InternalEncoder internalEncoder = new InternalEncoder();
             internalEncoder.objectId = path.getObjectId();
             internalEncoder.model = model;
+            internalEncoder.rootPath = rootPath;
             internalEncoder.requestPath = path;
             internalEncoder.converter = converter;
             internalEncoder.records = new ArrayList<>();
@@ -127,8 +129,8 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
     }
 
     @Override
-    public byte[] encodeTimestampedData(List<TimestampedLwM2mNode> timestampedNodes, LwM2mPath path, LwM2mModel model,
-            LwM2mValueConverter converter) throws CodecException {
+    public byte[] encodeTimestampedData(List<TimestampedLwM2mNode> timestampedNodes, String rootPath, LwM2mPath path,
+            LwM2mModel model, LwM2mValueConverter converter) throws CodecException {
         Validate.notNull(timestampedNodes);
         Validate.notNull(path);
         Validate.notNull(model);
@@ -148,12 +150,18 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
             InternalEncoder internalEncoder = new InternalEncoder();
             internalEncoder.objectId = path.getObjectId();
             internalEncoder.model = model;
+            internalEncoder.rootPath = rootPath;
             internalEncoder.requestPath = path;
             internalEncoder.converter = converter;
             internalEncoder.records = new ArrayList<>();
             timestampedLwM2mNode.getNode().accept(internalEncoder);
             BigDecimal timestampInSeconds = TimestampUtil.fromInstant(timestampedLwM2mNode.getTimestamp());
-            internalEncoder.records.get(0).setBaseTime(timestampInSeconds);
+
+            SenMLRecord record = internalEncoder.records.get(0);
+            SenMLRecord timestampedrecord = new SenMLRecord(record.getBaseName(), timestampInSeconds, record.getName(),
+                    record.getTime(), record.getNumberValue(), record.getBooleanValue(), record.getObjectLinkValue(),
+                    record.getStringValue(), record.getOpaqueValue());
+            internalEncoder.records.set(0, timestampedrecord);
             pack.addRecords(internalEncoder.records);
         }
 
@@ -165,7 +173,7 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
     }
 
     @Override
-    public byte[] encodeTimestampedNodes(TimestampedLwM2mNodes timestampedNodes, LwM2mModel model,
+    public byte[] encodeTimestampedNodes(String rootPath, TimestampedLwM2mNodes timestampedNodes, LwM2mModel model,
             LwM2mValueConverter converter) throws CodecException {
         Validate.notEmpty(timestampedNodes.getTimestamps());
 
@@ -177,6 +185,7 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
                 InternalEncoder internalEncoder = new InternalEncoder();
                 internalEncoder.objectId = path.getObjectId();
                 internalEncoder.model = model;
+                internalEncoder.rootPath = rootPath;
                 internalEncoder.requestPath = path;
                 internalEncoder.converter = converter;
                 internalEncoder.records = new ArrayList<>();
@@ -186,7 +195,13 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
 
                     List<SenMLRecord> records = internalEncoder.records;
                     if (!records.isEmpty()) {
-                        records.get(0).setBaseTime(TimestampUtil.fromInstant(timestamp));
+                        SenMLRecord record = internalEncoder.records.get(0);
+                        SenMLRecord timestampedrecord = new SenMLRecord(record.getBaseName(),
+                                TimestampUtil.fromInstant(timestamp), record.getName(), record.getTime(),
+                                record.getNumberValue(), record.getBooleanValue(), record.getObjectLinkValue(),
+                                record.getStringValue(), record.getOpaqueValue());
+                        internalEncoder.records.set(0, timestampedrecord);
+
                         pack.addRecords(records);
                     }
                 }
@@ -206,6 +221,7 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
         private LwM2mModel model;
         private LwM2mPath requestPath;
         private LwM2mValueConverter converter;
+        private String rootPath;
 
         // visitor output
         private ArrayList<SenMLRecord> records = new ArrayList<>();
@@ -318,8 +334,9 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
         }
 
         private void addSenMLRecord(String recordName, Type valueType, Type expectedType, Object value) {
-            // Create SenML record
-            SenMLRecord record = new SenMLRecord();
+            // Create SenML record attributes
+            String recordbasename = null;
+            String recordname = null;
 
             // Compute baseName and name for SenML record
             String bn = requestPath.toString();
@@ -332,48 +349,54 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
 
             // Set basename only for first record
             if (records.isEmpty()) {
-                record.setBaseName(bn);
+                recordbasename = (rootPath != null ? rootPath + bn : bn);
             }
-            record.setName(n);
+            recordname = n;
 
             // Convert value using expected type
             LwM2mPath lwM2mResourcePath = new LwM2mPath(bn + n);
             Object convertedValue = converter.convertValue(value, valueType, expectedType, lwM2mResourcePath);
-            setResourceValue(convertedValue, expectedType, lwM2mResourcePath, record);
+            SenMLRecord record = setResourceValue(convertedValue, expectedType, lwM2mResourcePath, recordbasename,
+                    recordname);
 
             // Add record to the List
             records.add(record);
         }
 
-        private void setResourceValue(Object value, Type type, LwM2mPath resourcePath, SenMLRecord record) {
+        private SenMLRecord setResourceValue(Object value, Type type, LwM2mPath resourcePath, String recordBaseName,
+                String recordName) {
             LOG.trace("Encoding resource value {} in SenML", value);
 
             if (type == null || type == Type.NONE) {
                 throw new CodecException(
                         "Unable to encode value for resource {} without type(probably a executable one)", resourcePath);
             }
+            String recordStringValue = null;
+            Number recordNumberValue = null;
+            Boolean recordBooleanValue = null;
+            byte[] recordopaqueValue = null;
 
             switch (type) {
             case STRING:
-                record.setStringValue((String) value);
+                recordStringValue = (String) value;
                 break;
             case INTEGER:
             case UNSIGNED_INTEGER:
             case FLOAT:
-                record.setNumberValue((Number) value);
+                recordNumberValue = (Number) value;
                 break;
             case BOOLEAN:
-                record.setBooleanValue((Boolean) value);
+                recordBooleanValue = (Boolean) value;
                 break;
             case TIME:
-                record.setNumberValue((((Date) value).getTime() / 1000L));
+                recordNumberValue = ((Date) value).getTime() / 1000L;
                 break;
             case OPAQUE:
-                record.setOpaqueValue((byte[]) value);
+                recordopaqueValue = (byte[]) value;
                 break;
             case OBJLNK:
                 try {
-                    record.setStringValue(((ObjectLink) value).encodeToString());
+                    recordStringValue = ((ObjectLink) value).encodeToString();
                 } catch (IllegalArgumentException e) {
                     throw new CodecException(e, "Invalid value [%s] for objectLink resource [%s] ", value,
                             resourcePath);
@@ -381,11 +404,13 @@ public class LwM2mNodeSenMLEncoder implements TimestampedNodeEncoder, MultiNodeE
                 break;
 
             case CORELINK:
-                record.setStringValue(linkSerializer.serializeCoreLinkFormat((Link[]) value));
+                recordStringValue = linkSerializer.serializeCoreLinkFormat((Link[]) value);
                 break;
             default:
                 throw new CodecException("Invalid value type %s for %s", type, resourcePath);
             }
+            return new SenMLRecord(recordBaseName, null, recordName, null, recordNumberValue, recordBooleanValue, null,
+                    recordStringValue, recordopaqueValue);
         }
     }
 }

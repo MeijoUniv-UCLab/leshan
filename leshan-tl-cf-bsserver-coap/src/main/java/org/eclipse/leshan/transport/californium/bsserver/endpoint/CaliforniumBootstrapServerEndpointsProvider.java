@@ -16,7 +16,6 @@
 package org.eclipse.leshan.transport.californium.bsserver.endpoint;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,7 +37,9 @@ import org.eclipse.leshan.bsserver.endpoint.BootstrapServerEndpointToolbox;
 import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpoint;
 import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpointsProvider;
 import org.eclipse.leshan.bsserver.request.BootstrapUplinkRequestReceiver;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.util.NamedThreadFactory;
 import org.eclipse.leshan.servers.security.ServerSecurityInfo;
@@ -53,7 +54,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
 
     // TODO TL : provide a COAP/Californium API ? like previous LeshanServer.coapAPI()
 
-    private final Logger LOG = LoggerFactory.getLogger(CaliforniumBootstrapServerEndpointsProvider.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CaliforniumBootstrapServerEndpointsProvider.class);
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1,
             new NamedThreadFactory("Leshan Async Request timeout"));
@@ -71,7 +72,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
     protected CaliforniumBootstrapServerEndpointsProvider(Builder builder) {
         this.serverConfig = builder.serverConfiguration;
         this.endpointsFactory = builder.endpointsFactory;
-        this.endpoints = new ArrayList<CaliforniumBootstrapServerEndpoint>();
+        this.endpoints = new ArrayList<>();
     }
 
     public CoapServer getCoapServer() {
@@ -84,7 +85,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
     }
 
     @Override
-    public LwM2mBootstrapServerEndpoint getEndpoint(URI uri) {
+    public LwM2mBootstrapServerEndpoint getEndpoint(EndpointUri uri) {
         for (CaliforniumBootstrapServerEndpoint endpoint : endpoints) {
             if (endpoint.getURI().equals(uri))
                 return endpoint;
@@ -95,7 +96,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
     @Override
     public void createEndpoints(BootstrapUplinkRequestReceiver requestReceiver, BootstrapServerEndpointToolbox toolbox,
             ServerSecurityInfo serverSecurityInfo, LeshanBootstrapServer server) {
-        // create server;
+        // create server
         coapServer = new CoapServer(serverConfig) {
             @Override
             protected Resource createRoot() {
@@ -117,7 +118,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
                 final IdentityHandler identityHandler = endpointFactory.createIdentityHandler();
                 identityHandlerProvider.addIdentityHandler(coapEndpoint, identityHandler);
 
-                // create exception translator;
+                // create exception translator
                 ExceptionTranslator exceptionTranslator = endpointFactory.createExceptionTranslator();
 
                 // create LWM2M endpoint
@@ -156,6 +157,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
             executor.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             LOG.warn("Destroying RequestSender was interrupted.", e);
+            Thread.currentThread().interrupt();
         }
         coapServer.destroy();
     }
@@ -165,17 +167,26 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
         private final List<BootstrapServerProtocolProvider> protocolProviders;
         private Configuration serverConfiguration;
         private final List<CaliforniumBootstrapServerEndpointFactory> endpointsFactory;
+        private EndPointUriHandler uriHandler;
 
         public Builder(BootstrapServerProtocolProvider... protocolProviders) {
+            this(new DefaultEndPointUriHandler(), protocolProviders);
+        }
+
+        public Builder(EndPointUriHandler uriHandler, BootstrapServerProtocolProvider... protocolProviders) {
             // TODO TL : handle duplicate ?
-            this.protocolProviders = new ArrayList<BootstrapServerProtocolProvider>();
+            this.protocolProviders = new ArrayList<>();
             if (protocolProviders.length == 0) {
                 this.protocolProviders.add(new CoapBootstrapServerProtocolProvider());
             } else {
                 this.protocolProviders.addAll(Arrays.asList(protocolProviders));
             }
-
+            this.uriHandler = uriHandler;
             this.endpointsFactory = new ArrayList<>();
+        }
+
+        public void setUriHandler(EndPointUriHandler uriHandler) {
+            this.uriHandler = uriHandler;
         }
 
         /**
@@ -261,15 +272,15 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
         }
 
         public Builder addEndpoint(String uri) {
-            return addEndpoint(EndpointUriUtil.createUri(uri));
+            return addEndpoint(uriHandler.createUri(uri));
         }
 
-        public Builder addEndpoint(URI uri) {
+        public Builder addEndpoint(EndpointUri uri) {
             for (BootstrapServerProtocolProvider protocolProvider : protocolProviders) {
                 // TODO TL : validate URI
                 if (protocolProvider.getProtocol().getUriScheme().equals(uri.getScheme())) {
                     // TODO TL: handle duplicate addr
-                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(uri));
+                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(uri, uriHandler));
                 }
             }
             // TODO TL: handle missing provider for given protocol
@@ -277,7 +288,7 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
         }
 
         public Builder addEndpoint(InetSocketAddress addr, Protocol protocol) {
-            return addEndpoint(EndpointUriUtil.createUri(protocol.getUriScheme(), addr));
+            return addEndpoint(uriHandler.createUri(protocol.getUriScheme(), addr));
         }
 
         public Builder addEndpoint(CaliforniumBootstrapServerEndpointFactory endpointFactory) {
@@ -294,8 +305,8 @@ public class CaliforniumBootstrapServerEndpointsProvider implements LwM2mBootstr
             if (endpointsFactory.isEmpty()) {
                 for (BootstrapServerProtocolProvider protocolProvider : protocolProviders) {
                     // TODO TL : handle duplicates
-                    endpointsFactory.add(protocolProvider
-                            .createDefaultEndpointFactory(protocolProvider.getDefaultUri(serverConfiguration)));
+                    endpointsFactory.add(protocolProvider.createDefaultEndpointFactory(
+                            protocolProvider.getDefaultUri(serverConfiguration, uriHandler), uriHandler));
                 }
             }
             return this;

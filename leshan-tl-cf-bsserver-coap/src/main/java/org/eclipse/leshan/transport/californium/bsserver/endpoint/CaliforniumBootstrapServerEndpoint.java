@@ -15,7 +15,6 @@
  *******************************************************************************/
 package org.eclipse.leshan.transport.californium.bsserver.endpoint;
 
-import java.net.URI;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -30,7 +29,7 @@ import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.leshan.bsserver.BootstrapSession;
 import org.eclipse.leshan.bsserver.endpoint.BootstrapServerEndpointToolbox;
 import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpoint;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.request.DownlinkBootstrapRequest;
 import org.eclipse.leshan.core.response.ErrorCallback;
@@ -77,8 +76,8 @@ public class CaliforniumBootstrapServerEndpoint implements LwM2mBootstrapServerE
     }
 
     @Override
-    public URI getURI() {
-        return EndpointUriUtil.createUri(protocol.getUriScheme(), endpoint.getAddress());
+    public EndpointUri getURI() {
+        return toolbox.getUriHandler().createUri(protocol.getUriScheme(), endpoint.getAddress());
     }
 
     @Override
@@ -183,11 +182,6 @@ public class CaliforniumBootstrapServerEndpoint implements LwM2mBootstrapServerE
         }
     }
 
-    private void removeOngoingRequest(String key, Request coapRequest) {
-        Validate.notNull(key);
-        ongoingRequests.remove(key, coapRequest);
-    }
-
     private final AtomicLong idGenerator = new AtomicLong(0l);
 
     private class CleanerMessageObserver extends MessageObserverAdapter {
@@ -207,6 +201,7 @@ public class CaliforniumBootstrapServerEndpoint implements LwM2mBootstrapServerE
 
         @Override
         public void onRetransmission() {
+            // nothing to do on retransmission
         }
 
         @Override
@@ -216,6 +211,7 @@ public class CaliforniumBootstrapServerEndpoint implements LwM2mBootstrapServerE
 
         @Override
         public void onAcknowledgement() {
+            // nothing to do on acknowledgement
         }
 
         @Override
@@ -227,5 +223,11 @@ public class CaliforniumBootstrapServerEndpoint implements LwM2mBootstrapServerE
         public void onCancel() {
             removeOngoingRequest(requestKey, coapRequest);
         }
+
+        private void removeOngoingRequest(String key, Request coapRequest) {
+            Validate.notNull(key);
+            ongoingRequests.remove(key, coapRequest);
+        }
+
     }
 }

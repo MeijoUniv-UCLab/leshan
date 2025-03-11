@@ -33,11 +33,12 @@ import org.eclipse.californium.elements.config.Configuration;
 import org.eclipse.californium.elements.util.CertPathUtil;
 import org.eclipse.californium.scandium.config.DtlsConfig;
 import org.eclipse.californium.scandium.config.DtlsConfig.DtlsRole;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.DefaultEndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.model.ObjectLoader;
 import org.eclipse.leshan.core.model.ObjectModel;
@@ -47,8 +48,8 @@ import org.eclipse.leshan.demo.server.cli.LeshanServerDemoCLI;
 import org.eclipse.leshan.demo.server.servlet.ClientServlet;
 import org.eclipse.leshan.demo.server.servlet.EventServlet;
 import org.eclipse.leshan.demo.server.servlet.ObjectSpecServlet;
-import org.eclipse.leshan.demo.server.servlet.ServerServlet;
 import org.eclipse.leshan.demo.servers.json.servlet.SecurityServlet;
+import org.eclipse.leshan.demo.servers.json.servlet.ServerServlet;
 import org.eclipse.leshan.server.LeshanServer;
 import org.eclipse.leshan.server.LeshanServerBuilder;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
@@ -83,6 +84,7 @@ public class LeshanServerDemo {
     private static final Logger LOG = LoggerFactory.getLogger(LeshanServerDemo.class);
     private static final String CF_CONFIGURATION_FILENAME = "Californium3.server.properties";
     private static final String CF_CONFIGURATION_HEADER = "Leshan Server Demo - " + Configuration.DEFAULT_HEADER;
+    private static final EndPointUriHandler uriHandler = new DefaultEndPointUriHandler();
 
     public static void main(String[] args) {
 
@@ -242,8 +244,8 @@ public class LeshanServerDemo {
         if (cli.main.disableOscore) {
             endpointsBuilder.addEndpoint(coapAddr, Protocol.COAP);
         } else {
-            endpointsBuilder.addEndpoint(new CoapOscoreServerEndpointFactory(
-                    EndpointUriUtil.createUri(Protocol.COAP.getUriScheme(), coapAddr)));
+            endpointsBuilder.addEndpoint(
+                    new CoapOscoreServerEndpointFactory(uriHandler.createUri(Protocol.COAP.getUriScheme(), coapAddr)));
         }
 
         // Create CoAP over DTLS endpoint
@@ -288,25 +290,24 @@ public class LeshanServerDemo {
             jettyAddr = new InetSocketAddress(cli.main.webhost, cli.main.webPort);
         }
         Server server = new Server(jettyAddr);
-        ServletContextHandler root = new ServletContextHandler(null, "/", true, false);
+        ServletContextHandler root = new ServletContextHandler("/", true, false);
         server.setHandler(root);
 
         // Create static Servlet
         DefaultServlet staticServelt = new DefaultServlet();
         ServletHolder staticHolder = new ServletHolder(staticServelt);
-        staticHolder.setInitParameter("resourceBase",
+        staticHolder.setInitParameter("baseResource",
                 LeshanServerDemo.class.getClassLoader().getResource("webapp").toExternalForm());
-        staticHolder.setInitParameter("pathInfoOnly", "true");
         staticHolder.setInitParameter("gzip", "true");
         staticHolder.setInitParameter("cacheControl", "public, max-age=31536000");
-        root.addServlet(staticHolder, "/*");
+        root.addServlet(staticHolder, "/");
 
         // Create REST API Servlets
         EventServlet eventServlet = new EventServlet(lwServer);
         ServletHolder eventServletHolder = new ServletHolder(eventServlet);
         root.addServlet(eventServletHolder, "/api/event/*");
 
-        ServletHolder clientServletHolder = new ServletHolder(new ClientServlet(lwServer));
+        ServletHolder clientServletHolder = new ServletHolder(new ClientServlet(lwServer, eventServlet));
         root.addServlet(clientServletHolder, "/api/clients/*");
 
         ServletHolder securityServletHolder;
@@ -321,9 +322,11 @@ public class LeshanServerDemo {
 
         ServletHolder serverServletHolder;
         if (cli.identity.isRPK()) {
-            serverServletHolder = new ServletHolder(new ServerServlet(lwServer, cli.identity.getPublicKey()));
+            serverServletHolder = new ServletHolder(
+                    new ServerServlet(lwServer.getEndpoints(), cli.identity.getPublicKey()));
         } else {
-            serverServletHolder = new ServletHolder(new ServerServlet(lwServer, cli.identity.getCertChain()[0]));
+            serverServletHolder = new ServletHolder(
+                    new ServerServlet(lwServer.getEndpoints(), cli.identity.getCertChain()[0]));
         }
         root.addServlet(serverServletHolder, "/api/server/*");
 

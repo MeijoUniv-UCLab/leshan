@@ -37,12 +37,12 @@ public class LwM2mPathSenMLEncoder implements PathEncoder {
     }
 
     @Override
-    public byte[] encode(List<LwM2mPath> paths) {
+    public byte[] encode(String rootPath, List<LwM2mPath> paths) {
         // Create SenML Pack
         SenMLPack pack = new SenMLPack();
         for (LwM2mPath path : paths) {
-            SenMLRecord record = new SenMLRecord();
-            record.setName(path.toString());
+            String Name = (rootPath != null ? rootPath + path.toString() : path.toString());
+            SenMLRecord record = new SenMLRecord(null, null, Name, null, null, null, null, null, null);
             pack.addRecord(record);
         }
 

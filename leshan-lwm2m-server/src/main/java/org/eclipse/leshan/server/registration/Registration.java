@@ -19,7 +19,6 @@ package org.eclipse.leshan.server.registration;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,12 +27,13 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.eclipse.leshan.core.LwM2m.LwM2mVersion;
 import org.eclipse.leshan.core.LwM2m.Version;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.link.Link;
 import org.eclipse.leshan.core.node.LwM2mPath;
 import org.eclipse.leshan.core.peer.IpPeer;
@@ -90,7 +90,8 @@ public class Registration {
 
     private final Map<String, String> applicationData;
 
-    private final URI lastEndpointUsed;
+    // URI of endpoint used for this registration.
+    private final EndpointUri endpointUri;
 
     protected Registration(Builder builder) {
 
@@ -98,7 +99,7 @@ public class Registration {
         id = builder.registrationId;
         clientTransportData = builder.clientTransportData;
         endpoint = builder.endpoint;
-        lastEndpointUsed = builder.lastEndpointUsed;
+        endpointUri = builder.endpointUri;
 
         // object links related params
         objectLinks = builder.objectLinks;
@@ -355,143 +356,56 @@ public class Registration {
 
     /**
      * @return URI of the server endpoint used by client to register.
-     *         <p>
-     *         This can be changed in next milestones : https://github.com/eclipse/leshan/issues/1415
      */
-    public URI getLastEndpointUsed() {
-        return lastEndpointUsed;
+    public EndpointUri getEndpointUri() {
+        return endpointUri;
     }
 
     @Override
     public String toString() {
         return String.format(
-                "Registration [registrationDate=%s, clientTransportData=%s, lifeTimeInSec=%s, smsNumber=%s, lwM2mVersion=%s, bindingMode=%s, queueMode=%s, endpoint=%s, id=%s, objectLinks=%s, additionalRegistrationAttributes=%s, rootPath=%s, supportedContentFormats=%s, supportedObjects=%s, availableInstances=%s, lastUpdate=%s, applicationData=%s]",
+                "Registration [registrationDate=%s, clientTransportData=%s, lifeTimeInSec=%s, smsNumber=%s, lwM2mVersion=%s, bindingMode=%s, queueMode=%s, endpoint=%s, id=%s, objectLinks=%s, additionalRegistrationAttributes=%s, rootPath=%s, supportedContentFormats=%s, supportedObjects=%s, availableInstances=%s, lastUpdate=%s, applicationData=%s, endpointUri=%s]",
                 registrationDate, clientTransportData, lifeTimeInSec, smsNumber, lwM2mVersion, bindingMode, queueMode,
                 endpoint, id, Arrays.toString(objectLinks), additionalRegistrationAttributes, rootPath,
-                supportedContentFormats, supportedObjects, availableInstances, lastUpdate, applicationData);
+                supportedContentFormats, supportedObjects, availableInstances, lastUpdate, applicationData,
+                endpointUri);
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result
-                + ((additionalRegistrationAttributes == null) ? 0 : additionalRegistrationAttributes.hashCode());
-        result = prime * result + ((applicationData == null) ? 0 : applicationData.hashCode());
-        result = prime * result + ((availableInstances == null) ? 0 : availableInstances.hashCode());
-        result = prime * result + ((bindingMode == null) ? 0 : bindingMode.hashCode());
-        result = prime * result + ((endpoint == null) ? 0 : endpoint.hashCode());
-        result = prime * result + ((id == null) ? 0 : id.hashCode());
-        result = prime * result + ((clientTransportData == null) ? 0 : clientTransportData.hashCode());
-        result = prime * result + ((lastUpdate == null) ? 0 : lastUpdate.hashCode());
-        result = prime * result + (int) (lifeTimeInSec ^ (lifeTimeInSec >>> 32));
-        result = prime * result + ((lwM2mVersion == null) ? 0 : lwM2mVersion.hashCode());
-        result = prime * result + Arrays.hashCode(objectLinks);
-        result = prime * result + ((queueMode == null) ? 0 : queueMode.hashCode());
-        result = prime * result + ((registrationDate == null) ? 0 : registrationDate.hashCode());
-        result = prime * result + ((rootPath == null) ? 0 : rootPath.hashCode());
-        result = prime * result + ((smsNumber == null) ? 0 : smsNumber.hashCode());
-        result = prime * result + ((supportedContentFormats == null) ? 0 : supportedContentFormats.hashCode());
-        result = prime * result + ((supportedObjects == null) ? 0 : supportedObjects.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public final boolean equals(Object o) {
+        if (this == o)
             return true;
-        if (obj == null)
+        if (!(o instanceof Registration))
             return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Registration other = (Registration) obj;
-        if (additionalRegistrationAttributes == null) {
-            if (other.additionalRegistrationAttributes != null)
-                return false;
-        } else if (!additionalRegistrationAttributes.equals(other.additionalRegistrationAttributes))
-            return false;
-        if (applicationData == null) {
-            if (other.applicationData != null)
-                return false;
-        } else if (!applicationData.equals(other.applicationData))
-            return false;
-        if (availableInstances == null) {
-            if (other.availableInstances != null)
-                return false;
-        } else if (!availableInstances.equals(other.availableInstances))
-            return false;
-        if (bindingMode == null) {
-            if (other.bindingMode != null)
-                return false;
-        } else if (!bindingMode.equals(other.bindingMode))
-            return false;
-        if (endpoint == null) {
-            if (other.endpoint != null)
-                return false;
-        } else if (!endpoint.equals(other.endpoint))
-            return false;
-        if (id == null) {
-            if (other.id != null)
-                return false;
-        } else if (!id.equals(other.id))
-            return false;
-        if (clientTransportData == null) {
-            if (other.clientTransportData != null)
-                return false;
-        } else if (!clientTransportData.equals(other.clientTransportData))
-            return false;
-        if (lastUpdate == null) {
-            if (other.lastUpdate != null)
-                return false;
-        } else if (!lastUpdate.equals(other.lastUpdate))
-            return false;
-        if (lifeTimeInSec != other.lifeTimeInSec)
-            return false;
-        if (lwM2mVersion == null) {
-            if (other.lwM2mVersion != null)
-                return false;
-        } else if (!lwM2mVersion.equals(other.lwM2mVersion))
-            return false;
-        if (!Arrays.equals(objectLinks, other.objectLinks))
-            return false;
-        if (queueMode == null) {
-            if (other.queueMode != null)
-                return false;
-        } else if (!queueMode.equals(other.queueMode))
-            return false;
-        if (registrationDate == null) {
-            if (other.registrationDate != null)
-                return false;
-        } else if (!registrationDate.equals(other.registrationDate))
-            return false;
-        if (rootPath == null) {
-            if (other.rootPath != null)
-                return false;
-        } else if (!rootPath.equals(other.rootPath))
-            return false;
-        if (smsNumber == null) {
-            if (other.smsNumber != null)
-                return false;
-        } else if (!smsNumber.equals(other.smsNumber))
-            return false;
-        if (supportedContentFormats == null) {
-            if (other.supportedContentFormats != null)
-                return false;
-        } else if (!supportedContentFormats.equals(other.supportedContentFormats))
-            return false;
-        if (supportedObjects == null) {
-            if (other.supportedObjects != null)
-                return false;
-        } else if (!supportedObjects.equals(other.supportedObjects))
-            return false;
-        return true;
+        Registration that = (Registration) o;
+        return lifeTimeInSec == that.lifeTimeInSec && Objects.equals(registrationDate, that.registrationDate)
+                && Objects.equals(clientTransportData, that.clientTransportData)
+                && Objects.equals(smsNumber, that.smsNumber) && Objects.equals(lwM2mVersion, that.lwM2mVersion)
+                && Objects.equals(bindingMode, that.bindingMode) && Objects.equals(queueMode, that.queueMode)
+                && Objects.equals(endpoint, that.endpoint) && Objects.equals(id, that.id)
+                && Arrays.equals(objectLinks, that.objectLinks)
+                && Objects.equals(additionalRegistrationAttributes, that.additionalRegistrationAttributes)
+                && Objects.equals(rootPath, that.rootPath)
+                && Objects.equals(supportedContentFormats, that.supportedContentFormats)
+                && Objects.equals(supportedObjects, that.supportedObjects)
+                && Objects.equals(availableInstances, that.availableInstances)
+                && Objects.equals(lastUpdate, that.lastUpdate) && Objects.equals(applicationData, that.applicationData)
+                && Objects.equals(endpointUri, that.endpointUri);
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hash(registrationDate, clientTransportData, lifeTimeInSec, smsNumber, lwM2mVersion, bindingMode,
+                queueMode, endpoint, id, Arrays.hashCode(objectLinks), additionalRegistrationAttributes, rootPath,
+                supportedContentFormats, supportedObjects, availableInstances, lastUpdate, applicationData,
+                endpointUri);
     }
 
     public static class Builder {
         private final String registrationId;
         private final String endpoint;
         private final LwM2mPeer clientTransportData;
-        private final URI lastEndpointUsed;
+        private final EndpointUri endpointUri;
 
         private Date registrationDate;
         private Date lastUpdate;
@@ -514,7 +428,7 @@ public class Registration {
             registrationId = registration.id;
             clientTransportData = registration.clientTransportData;
             endpoint = registration.endpoint;
-            lastEndpointUsed = registration.lastEndpointUsed;
+            endpointUri = registration.endpointUri;
 
             // object links related params
             objectLinks = registration.objectLinks;
@@ -536,17 +450,17 @@ public class Registration {
             applicationData = registration.applicationData;
         }
 
-        public Builder(String registrationId, String endpoint, LwM2mPeer clientTransportData, URI lastEndpointUsed) {
+        public Builder(String registrationId, String endpoint, LwM2mPeer clientTransportData, EndpointUri endpointUri) {
 
             Validate.notNull(registrationId);
             Validate.notEmpty(endpoint);
             Validate.notNull(clientTransportData);
-            EndpointUriUtil.validateURI(lastEndpointUsed);
+            Validate.notNull(endpointUri);
 
             this.registrationId = registrationId;
             this.endpoint = endpoint;
             this.clientTransportData = clientTransportData;
-            this.lastEndpointUsed = lastEndpointUsed;
+            this.endpointUri = endpointUri;
         }
 
         public Builder registrationDate(Date registrationDate) {

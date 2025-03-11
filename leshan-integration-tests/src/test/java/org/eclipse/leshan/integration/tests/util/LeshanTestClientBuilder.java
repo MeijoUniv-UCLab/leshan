@@ -16,9 +16,9 @@
 package org.eclipse.leshan.integration.tests.util;
 
 import static org.eclipse.leshan.core.LwM2mId.OSCORE;
+import static org.eclipse.leshan.core.util.TestToolBox.uriHandler;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
@@ -41,6 +41,9 @@ import org.eclipse.leshan.bsserver.endpoint.LwM2mBootstrapServerEndpoint;
 import org.eclipse.leshan.client.LeshanClientBuilder;
 import org.eclipse.leshan.client.bootstrap.BootstrapConsistencyChecker;
 import org.eclipse.leshan.client.endpoint.LwM2mClientEndpointsProvider;
+import org.eclipse.leshan.client.engine.ClientEndpointNameProvider;
+import org.eclipse.leshan.client.engine.DefaultClientEndpointNameProvider;
+import org.eclipse.leshan.client.engine.DefaultClientEndpointNameProvider.Mode;
 import org.eclipse.leshan.client.engine.DefaultRegistrationEngineFactory;
 import org.eclipse.leshan.client.engine.RegistrationEngineFactory;
 import org.eclipse.leshan.client.object.Device;
@@ -59,7 +62,8 @@ import org.eclipse.leshan.client.servers.LwM2mServer;
 import org.eclipse.leshan.client.util.LinkFormatHelper;
 import org.eclipse.leshan.core.CertificateUsage;
 import org.eclipse.leshan.core.LwM2mId;
-import org.eclipse.leshan.core.endpoint.EndpointUriUtil;
+import org.eclipse.leshan.core.endpoint.EndPointUriHandler;
+import org.eclipse.leshan.core.endpoint.EndpointUri;
 import org.eclipse.leshan.core.endpoint.Protocol;
 import org.eclipse.leshan.core.link.LinkSerializer;
 import org.eclipse.leshan.core.link.lwm2m.attributes.LwM2mAttributeParser;
@@ -88,8 +92,8 @@ import org.eclipse.leshan.transport.javacoap.client.endpoint.JavaCoapClientEndpo
 public class LeshanTestClientBuilder extends LeshanClientBuilder {
 
     private static final Random r = new Random();
-
     private String endpointName;
+    private Mode endpointNameMode = Mode.ALWAYS;
     private Protocol protocolToUse;
     private LeshanServer server;
     private LeshanBootstrapServer bootstrapServer;
@@ -135,7 +139,7 @@ public class LeshanTestClientBuilder extends LeshanClientBuilder {
         try {
             // connect to LWM2M Server
             if (server != null) {
-                URI uri = getServerUri();
+                EndpointUri uri = getServerUri();
 
                 int serverID = 12345;
 
@@ -166,7 +170,7 @@ public class LeshanTestClientBuilder extends LeshanClientBuilder {
             // connect to LWM2M Bootstrap Server
             else if (bootstrapServer != null) {
                 LwM2mBootstrapServerEndpoint endpoint = bootstrapServer.getEndpoint(protocolToUse);
-                URI uri = endpoint.getURI();
+                EndpointUri uri = endpoint.getURI();
                 Security securityEnabler = null;
 
                 if (pskIdentity != null && pskKey != null) {
@@ -225,25 +229,30 @@ public class LeshanTestClientBuilder extends LeshanClientBuilder {
     }
 
     @Override
-    protected LeshanTestClient createLeshanClient(String endpoint, List<? extends LwM2mObjectEnabler> objectEnablers,
-            List<DataSender> dataSenders, List<Certificate> trustStore, RegistrationEngineFactory engineFactory,
-            BootstrapConsistencyChecker checker, Map<String, String> additionalAttributes,
-            Map<String, String> bsAdditionalAttributes, LwM2mEncoder encoder, LwM2mDecoder decoder,
-            ScheduledExecutorService sharedExecutor, LinkSerializer linkSerializer, LinkFormatHelper linkFormatHelper,
-            LwM2mAttributeParser attributeParser, LwM2mClientEndpointsProvider endpointsProvider) {
-        String endpointName;
+    protected LeshanTestClient createLeshanClient(ClientEndpointNameProvider endpointNameProvider,
+            List<? extends LwM2mObjectEnabler> objectEnablers, List<DataSender> dataSenders,
+            List<Certificate> trustStore, RegistrationEngineFactory engineFactory, BootstrapConsistencyChecker checker,
+            Map<String, String> additionalAttributes, Map<String, String> bsAdditionalAttributes, LwM2mEncoder encoder,
+            LwM2mDecoder decoder, ScheduledExecutorService sharedExecutor, LinkSerializer linkSerializer,
+            LinkFormatHelper linkFormatHelper, LwM2mAttributeParser attributeParser, EndPointUriHandler uriHandler,
+            LwM2mClientEndpointsProvider endpointsProvider) {
+
+        // custom behavior for endpoint name provider
+        ClientEndpointNameProvider testEndpointNameProvider;
         if (this.endpointName != null) {
-            endpointName = this.endpointName;
+            testEndpointNameProvider = new DefaultClientEndpointNameProvider(this.endpointName, this.endpointNameMode);
         } else if (clientCertificate != null) {
             X500Principal subjectDN = clientCertificate.getSubjectX500Principal();
-            endpointName = X509CertUtil.getPrincipalField(subjectDN, "CN");
+            testEndpointNameProvider = new DefaultClientEndpointNameProvider(
+                    X509CertUtil.getPrincipalField(subjectDN, "CN"), this.endpointNameMode);
         } else {
-            endpointName = endpoint;
+            testEndpointNameProvider = new DefaultClientEndpointNameProvider(endpointNameProvider.getEndpointName(),
+                    this.endpointNameMode);
         }
 
-        return new LeshanTestClient(endpointName, objectEnablers, dataSenders, trustStore, engineFactory, checker,
-                additionalAttributes, bsAdditionalAttributes, encoder, decoder, sharedExecutor, linkSerializer,
-                linkFormatHelper, attributeParser, endpointsProvider, proxy);
+        return new LeshanTestClient(testEndpointNameProvider, objectEnablers, dataSenders, trustStore, engineFactory,
+                checker, additionalAttributes, bsAdditionalAttributes, encoder, decoder, sharedExecutor, linkSerializer,
+                linkFormatHelper, attributeParser, uriHandler, endpointsProvider, proxy);
     }
 
     public static LeshanTestClientBuilder givenClientUsing(Protocol protocol) {
@@ -315,6 +324,16 @@ public class LeshanTestClientBuilder extends LeshanClientBuilder {
 
     public LeshanTestClientBuilder named(String endpointName) {
         this.endpointName = endpointName;
+        return this;
+    }
+
+    public LeshanTestClientBuilder dontSendEndpointName() {
+        this.endpointNameMode = Mode.NEVER;
+        return this;
+    }
+
+    public LeshanTestClientBuilder sendEndpointNameIfNecessary() {
+        this.endpointNameMode = Mode.IF_NECESSARY;
         return this;
     }
 
@@ -458,17 +477,17 @@ public class LeshanTestClientBuilder extends LeshanClientBuilder {
         return this;
     }
 
-    private URI getServerUri() {
+    private EndpointUri getServerUri() {
         LwM2mServerEndpoint endpoint = server.getEndpoint(protocolToUse);
-        URI serverUri = endpoint.getURI();
+        EndpointUri serverUri = endpoint.getURI();
         // we force usage of "localhost" as hostname to be sure that X.509 test works.
         // see : https://github.com/eclipse-leshan/leshan/issues/1461#issuecomment-1631143202
         if (proxy != null) {
             // if server is behind a proxy we use its URI
-            return EndpointUriUtil.replaceAddress(serverUri,
+            return uriHandler.replaceAddress(serverUri,
                     new InetSocketAddress("localhost", proxy.getClientSideProxyAddress().getPort()));
         } else {
-            return EndpointUriUtil.replaceAddress(serverUri, new InetSocketAddress("localhost", serverUri.getPort()));
+            return uriHandler.replaceAddress(serverUri, new InetSocketAddress("localhost", serverUri.getPort()));
         }
     }
 }

@@ -27,7 +27,7 @@ Contributors:
   </parent>
   <artifactId>leshan-lwm2m-server-redis</artifactId>
   <packaging>bundle</packaging>
-  <name>leshan-server redis</name>
+  <name>Leshan server Redis</name>
   <description>Redis implementation for different stores of Leshan Server</description>
 
   <dependencies>
@@ -43,7 +43,7 @@ Contributors:
     <!-- test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
