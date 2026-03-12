@@ -28,6 +28,17 @@ Contributors:
   <name>Leshan demo bs server</name>
   <description>A LWM2M bootstrap demonstration server running an embedded Jetty server</description>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- Force Californium version convergence to the higher version -->
+      <dependency>
+        <groupId>org.eclipse.californium</groupId>
+        <artifactId>californium-legal</artifactId>
+        <version>4.0.0-M3</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.eclipse.leshan</groupId>
